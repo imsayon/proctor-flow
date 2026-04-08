@@ -1,0 +1,31 @@
+type Faculty @table(name: "faculties") {
+  id: String! @col(name: "id")
+  name: String! @col(name: "name")
+  desg: String! @col(name: "designation")
+  duties: Int! @col(name: "duties")
+  available: Boolean! @col(name: "available")
+}
+
+type Room @table(name: "rooms") {
+  id: String! @col(name: "id")
+  name: String! @col(name: "name")
+  capacity: Int! @col(name: "capacity")
+  meta: String @col(name: "meta")
+}
+
+type ExamSession @table(name: "exam_sessions") {
+  id: String! @col(name: "id")
+  date: String! @col(name: "date")
+  slot: String! @col(name: "slot")
+  subject: String! @col(name: "subject")
+  roomId: String! @col(name: "room_id")
+  room: Room!
+}
+
+type DutyAllocation @table(name: "duty_allocations") {
+  id: String! @col(name: "id")
+  sessionId: String! @col(name: "session_id")
+  session: ExamSession!
+  facultyId: String! @col(name: "faculty_id")
+  faculty: Faculty!
+}
