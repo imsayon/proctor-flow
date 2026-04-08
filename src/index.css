@@ -16,42 +16,70 @@
 }
 
 @layer base {
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    font-family: var(--font-sans);
+    background-color: #0d1117;
+    color: #e6edf3;
+    font-family: 'IBM Plex Sans', sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
   }
+  select option { background: #1c2128; }
 }
 
 @layer utilities {
+  /* Pills */
   .pill {
-    @apply inline-block px-2 py-[2px] font-mono text-[10px] font-semibold tracking-wide rounded-sm;
+    display: inline-block;
+    padding: 2px 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-radius: 2px;
   }
-  .pill-green {
-    @apply bg-green/15 text-green;
-  }
-  .pill-yellow {
-    @apply bg-accent/15 text-accent;
-  }
-  .pill-red {
-    @apply bg-red/15 text-red;
-  }
-  .pill-blue {
-    @apply bg-[#1f6feb]/20 text-[#58a6ff];
-  }
+  .pill-green { background: rgba(63,185,80,0.15); color: #3fb950; }
+  .pill-yellow { background: rgba(240,165,0,0.15); color: #f0a500; }
+  .pill-red { background: rgba(248,81,73,0.15); color: #f85149; }
+  .pill-blue { background: rgba(31,111,235,0.2); color: #58a6ff; }
 
+  /* Buttons */
   .btn {
-    @apply inline-flex items-center gap-[6px] px-4 py-2 font-mono text-xs cursor-pointer border transition-all duration-150 tracking-wide;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+    text-decoration: none;
   }
-  .btn-primary {
-    @apply bg-accent text-black border-accent font-semibold hover:bg-[#d4920a];
-  }
-  .btn-outline {
-    @apply bg-transparent text-text border-border hover:border-muted;
-  }
-  .btn-danger {
-    @apply bg-transparent text-red border-red hover:bg-red/10;
-  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: #f0a500; color: #000; border-color: #f0a500; font-weight: 600; }
+  .btn-primary:hover:not(:disabled) { background: #d4920a; }
+  .btn-outline { background: transparent; color: #e6edf3; border-color: #30363d; }
+  .btn-outline:hover:not(:disabled) { border-color: #7d8590; }
+  .btn-danger { background: transparent; color: #f85149; border-color: #f85149; }
+  .btn-danger:hover:not(:disabled) { background: rgba(248,81,73,0.1); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #161b22; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #7d8590; }
 }
+
+/* Animations */
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fadein { animation: fadeIn 0.25s ease; }

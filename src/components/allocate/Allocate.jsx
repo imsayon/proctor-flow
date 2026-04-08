@@ -1,188 +1,208 @@
-import { useState } from 'react';
-import { initialLogs } from '../../lib/dummyData';
-import { emulateGreedyAllocation } from '../../utils/algorithm';
+// src/components/allocate/Allocate.jsx
+import { useState, useRef } from 'react';
+import { useApp } from '../../context/AppContext';
+import { useToast } from '../common/Toast';
+import { runGreedyAllocation } from '../../utils/algorithm';
 
-const steps = [
-  { id: 'step1', num: '01', name: 'Constraint Classification', status: 'Hard + Soft constraints', at: 10, msg: 'Classifying constraints...' },
-  { id: 'step2', num: '02', name: 'Priority Queue Init', status: 'Sort by load factor', at: 35, msg: 'Building priority queue...' },
-  { id: 'step3', num: '03', name: 'Greedy Allocation', status: 'Backtrack on conflict', at: 65, msg: 'Running greedy allocation...' },
-  { id: 'step4', num: '04', name: 'Student Shuffling', status: 'Fisher-Yates + gap constraint', at: 88, msg: 'Shuffling students...' },
-];
-
-const allocResults = [
-  { id: 1, date: '17 Nov', session: 'FN 9:30', room: 'A101', f1: 'Prof. Ramesh Kumar', f2: 'Prof. Suresh Nair', students: 40 },
-  { id: 2, date: '17 Nov', session: 'AN 1:30', room: 'A102', f1: 'Prof. Anita Sharma', f2: 'Prof. Priya Dev', students: 38 },
-  { id: 3, date: '18 Nov', session: 'FN 9:30', room: 'B201', f1: 'Prof. Kiran Bhat', f2: 'Prof. Yogesh BS', students: 42 },
-  { id: 4, date: '18 Nov', session: 'AN 1:30', room: 'B202', f1: 'Prof. Ravi S', f2: 'Prof. Deepa J', students: 36 },
-  { id: 5, date: '19 Nov', session: 'FN 9:30', room: 'A101', f1: 'Prof. Arjun T', f2: 'Prof. Sindhu K', students: 40 },
-  { id: 6, date: '19 Nov', session: 'AN 1:30', room: 'A102', f1: 'Prof. Mahesh V', f2: 'Prof. Usha P', students: 38 },
-  { id: 7, date: '20 Nov', session: 'FN 9:30', room: 'B201', f1: 'Prof. Harish N', f2: 'Prof. Latha S', students: 42 },
-  { id: 8, date: '20 Nov', session: 'AN 1:30', room: 'B202', f1: 'Prof. Ramesh Kumar', f2: 'Prof. Anita Sharma', students: 36 },
+const ALGO_STEPS = [
+  { id: 'step1', num: '01', name: 'Constraint Classification', desc: 'Hard + Soft constraints' },
+  { id: 'step2', num: '02', name: 'Priority Queue Init', desc: 'Sort by load factor' },
+  { id: 'step3', num: '03', name: 'Greedy Allocation', desc: 'Backtrack on conflict' },
+  { id: 'step4', num: '04', name: 'Student Shuffling', desc: 'Fisher-Yates + gap constraint' },
 ];
 
 export default function Allocate() {
-  const [isRunning, setIsRunning] = useState(false);
-  const [isDone, setIsDone] = useState(false);
-  const [progressPct, setProgressPct] = useState(0);
-  const [currentLogs, setCurrentLogs] = useState([]);
-  const [progressLabel, setProgressLabel] = useState('Initializing...');
+  const { state, dispatch } = useApp();
+  const toast = useToast();
+  const [phase, setPhase] = useState('idle'); // idle | running | done
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState(-1);
+  const [logs, setLogs] = useState([]);
+  const [config, setConfig] = useState({ maxDutiesPerFaculty: 3, leaveBufferDays: 3, enforceRoomNonRepetition: true });
+  const logRef = useRef(null);
+
+  const appendLog = (entry) => {
+    setLogs(prev => {
+      const next = [...prev, entry];
+      requestAnimationFrame(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; });
+      return next;
+    });
+  };
 
   const runAllocation = async () => {
-    if (isDone || isRunning) return;
-    setIsRunning(true);
-    setProgressPct(0);
-    setCurrentLogs([]);
-    setProgressLabel('Initializing...');
-    
-    let lastLogIdx = 0;
-    
-    await emulateGreedyAllocation((pct) => {
-      setProgressPct(pct);
-      const activeStep = steps.find(s => pct >= s.at - 10 && pct < s.at + 15);
-      if (activeStep) setProgressLabel(activeStep.msg);
+    if (state.sessions.length === 0) { toast('Add exam sessions first!', 'error'); return; }
+    if (state.faculty.length === 0) { toast('Add faculty first!', 'error'); return; }
 
-      if (lastLogIdx < initialLogs.length && pct >= (lastLogIdx / initialLogs.length) * 95) {
-        setCurrentLogs(prev => [...prev, initialLogs[lastLogIdx]]);
-        lastLogIdx++;
-      }
+    setPhase('running');
+    setProgress(0);
+    setLogs([]);
+    setCurrentStep(0);
+    dispatch({ type: 'CLEAR_ALLOCATIONS' });
+
+    // Animate progress through steps
+    const stepDuration = 600;
+    for (let i = 0; i < ALGO_STEPS.length; i++) {
+      setCurrentStep(i);
+      await new Promise(r => setTimeout(r, stepDuration));
+      setProgress((i + 1) * 25);
+    }
+
+    // Run real algorithm
+    const { allocations, logs: algoLogs } = runGreedyAllocation(
+      state.sessions, state.faculty, state.leaves, config
+    );
+
+    algoLogs.forEach((entry, idx) => {
+      setTimeout(() => appendLog(entry), idx * 80);
     });
 
-    setIsRunning(false);
-    setIsDone(true);
-    setProgressLabel('✓ Allocation complete — 8 sessions assigned, 0 conflicts');
-    setCurrentLogs(initialLogs);
+    await new Promise(r => setTimeout(r, algoLogs.length * 80 + 300));
+
+    dispatch({ type: 'SET_ALLOCATIONS', payload: allocations });
+    setProgress(100);
+    setPhase('done');
+    const assigned = allocations.filter(a => a.status === 'assigned').length;
+    toast(`✓ Allocation complete: ${assigned}/${state.sessions.length} sessions assigned`);
   };
 
   const resetAllocation = () => {
-    setIsDone(false);
-    setIsRunning(false);
-    setProgressPct(0);
-    setCurrentLogs([]);
-    setProgressLabel('Initializing...');
+    setPhase('idle');
+    setProgress(0);
+    setCurrentStep(-1);
+    setLogs([]);
+    dispatch({ type: 'CLEAR_ALLOCATIONS' });
   };
 
+  const allocations = state.allocations;
+  const sessions = state.sessions;
+
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 pb-10">
+    <div className="pb-10">
       <div className="flex items-start justify-between mb-7">
         <div>
-          <div className="text-[22px] font-semibold tracking-tight">Run Allocation Engine</div>
-          <div className="text-xs text-muted mt-1 font-mono">Dynamic Priority-Based Resource Allocation Algorithm</div>
+          <div className="text-[22px] font-semibold tracking-tight">Allocation Engine</div>
+          <div className="text-xs text-[#7d8590] mt-1 font-mono">Greedy + Backtracking · Hard & Soft Constraint Validation</div>
         </div>
       </div>
 
-      <div className="bg-surface border border-border p-6 mb-6">
-        <div className="text-[15px] font-semibold mb-1.5">Algorithm Pipeline</div>
-        <div className="text-xs text-muted font-mono mb-5">Greedy allocation + backtracking with hard/soft constraint validation</div>
-        
-        <div className="flex gap-0 mb-6">
-          {steps.map((s) => {
-            const isFinished = progressPct > s.at + 10;
-            const isActive = progressPct >= s.at - 10 && !isFinished;
+      {/* Algorithm Pipeline */}
+      <div className="bg-[#161b22] border border-[#30363d] p-6 mb-6">
+        <div className="text-[15px] font-semibold mb-1">Algorithm Pipeline</div>
+        <div className="text-xs text-[#7d8590] font-mono mb-5">Greedy allocation + backtracking with hard/soft constraint validation</div>
+
+        <div className="flex gap-0 mb-6 overflow-x-auto">
+          {ALGO_STEPS.map((s, idx) => {
+            const isDone = phase === 'done' || (phase === 'running' && idx < currentStep);
+            const isActive = phase === 'running' && idx === currentStep;
             return (
-              <div key={s.id} className={`flex-1 p-[14px_16px] border border-border -mr-[1px] bg-surface2 transition-colors ${
-                isFinished ? 'border-green bg-green/5 relative z-10' : isActive ? 'border-accent bg-accent/5 relative z-10' : ''
+              <div key={s.id} className={`flex-1 min-w-[120px] p-[14px_16px] border border-[#30363d] -mr-[1px] transition-all duration-300 ${
+                isDone ? 'border-[#3fb950] bg-[#3fb950]/5' : isActive ? 'border-[#f0a500] bg-[#f0a500]/5' : 'bg-[#1c2128]'
               }`}>
-                <div className="font-mono text-[10px] text-muted mb-1">{s.num}</div>
+                <div className="font-mono text-[10px] text-[#7d8590] mb-1">{s.num}</div>
                 <div className="text-xs font-semibold">{s.name}</div>
-                <div className={`text-[10px] mt-1 font-mono transition-colors ${
-                    isFinished ? 'text-green' : isActive ? 'text-accent' : 'text-muted'
-                }`}>
-                  {s.status}
+                <div className={`text-[10px] mt-1 font-mono transition-colors ${isDone ? 'text-[#3fb950]' : isActive ? 'text-[#f0a500]' : 'text-[#7d8590]'}`}>
+                  {isDone ? '✓ Done' : isActive ? '⟳ Running...' : s.desc}
                 </div>
               </div>
             );
           })}
         </div>
 
+        {/* Config */}
         <div className="grid grid-cols-3 gap-4 mb-5">
-          <Field label="Exam Event">
-            <select className="bg-surface2 border border-border text-text px-3 py-2 font-mono text-xs outline-none focus:border-accent">
-                <option>CIE-II · Nov 17-22</option>
-                <option>SEE · Dec 2025</option>
-            </select>
-          </Field>
-          <Field label="Algorithm Mode">
-            <select className="bg-surface2 border border-border text-text px-3 py-2 font-mono text-xs outline-none focus:border-accent">
-                <option>Greedy + Backtrack</option>
-                <option>MILP Optimization</option>
-            </select>
-          </Field>
-          <Field label="Max Duties/Faculty">
-            <input type="number" defaultValue={3} min={1} max={8} className="bg-surface2 border border-border text-text px-3 py-2 font-mono text-xs outline-none focus:border-accent" />
-          </Field>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-mono text-[10px] uppercase tracking-[1px] text-[#7d8590]">Max Duties / Faculty</label>
+            <input type="number" min={1} max={8} value={config.maxDutiesPerFaculty}
+              onChange={e => setConfig(c => ({ ...c, maxDutiesPerFaculty: Number(e.target.value) }))}
+              className="bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2 font-mono text-xs outline-none focus:border-[#f0a500]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-mono text-[10px] uppercase tracking-[1px] text-[#7d8590]">Leave Buffer (days)</label>
+            <input type="number" min={0} max={7} value={config.leaveBufferDays}
+              onChange={e => setConfig(c => ({ ...c, leaveBufferDays: Number(e.target.value) }))}
+              className="bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2 font-mono text-xs outline-none focus:border-[#f0a500]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-mono text-[10px] uppercase tracking-[1px] text-[#7d8590]">Room Non-Repetition</label>
+            <button
+              onClick={() => setConfig(c => ({ ...c, enforceRoomNonRepetition: !c.enforceRoomNonRepetition }))}
+              className={`py-2 px-3 font-mono text-xs border transition-colors text-left ${config.enforceRoomNonRepetition ? 'border-[#3fb950] bg-[#3fb950]/10 text-[#3fb950]' : 'border-[#30363d] text-[#7d8590]'}`}>
+              {config.enforceRoomNonRepetition ? '✓ Enforce (strict)' : '× Disabled'}
+            </button>
+          </div>
         </div>
 
-        <button className="btn btn-primary" onClick={runAllocation} disabled={isRunning || isDone}>▶ Run Allocation</button>
-        <button className="btn btn-outline ml-2.5" onClick={resetAllocation}>↺ Reset</button>
+        <div className="flex gap-3">
+          <button onClick={runAllocation} disabled={phase === 'running'} className="btn btn-primary">
+            {phase === 'running' ? '⟳ Running...' : '▶ Run Allocation'}
+          </button>
+          {phase !== 'idle' && (
+            <button onClick={resetAllocation} className="btn btn-outline">↺ Reset</button>
+          )}
+        </div>
 
-        {(isRunning || isDone) && (
+        {/* Progress */}
+        {phase !== 'idle' && (
           <div className="mt-5">
-            <div className={`font-mono text-[11px] mb-2 ${isDone ? 'text-green' : 'text-muted'}`}>{progressLabel}</div>
-            <div className="bg-surface2 h-2 border border-border overflow-hidden mb-3 relative">
-              <div className="h-full bg-accent transition-all duration-200" style={{ width: `${progressPct}%` }}>
-                <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] animate-[shimmer_1s_infinite]" />
+            <div className={`font-mono text-[11px] mb-2 ${phase === 'done' ? 'text-[#3fb950]' : 'text-[#7d8590]'}`}>
+              {phase === 'done' ? `✓ Allocation complete — ${allocations.filter(a => a.status === 'assigned').length}/${sessions.length} sessions` : 'Processing...'}
+            </div>
+            <div className="bg-[#1c2128] h-2 border border-[#30363d] overflow-hidden mb-3 relative">
+              <div className="h-full bg-[#f0a500] transition-all duration-500 relative overflow-hidden" style={{ width: `${progress}%` }}>
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)', animation: 'shimmer 1.2s infinite' }} />
               </div>
             </div>
-            <div className="bg-black border border-border p-3 h-[120px] overflow-y-auto font-mono text-[11px] leading-relaxed flex flex-col justify-end">
-              {currentLogs.map(([type, msg], i) => (
-                <div key={i} className={`
-                  ${type === 'info' ? 'text-[#58a6ff]' : ''}
-                  ${type === 'warn' ? 'text-accent' : ''}
-                  ${type === 'ok' ? 'text-green' : ''}
-                `}>{msg}</div>
+            <div ref={logRef} className="bg-black border border-[#30363d] p-3 h-[130px] overflow-y-auto font-mono text-[11px] leading-relaxed">
+              {logs.map((entry, i) => (
+                <div key={i} className={entry.type === 'ok' ? 'text-[#3fb950]' : entry.type === 'warn' ? 'text-[#f0a500]' : 'text-[#58a6ff]'}>
+                  {entry.msg}
+                </div>
               ))}
             </div>
           </div>
         )}
       </div>
 
-      {isDone && (
-        <div className="animate-in fade-in duration-300">
-          <div className="flex items-center justify-between mb-[14px]">
-            <div className="font-mono text-[11px] uppercase tracking-[2px] text-muted">Allocation Results — CIE II</div>
-            <div className="flex gap-2.5">
-                <button className="btn btn-outline pb-1.5 pt-1.5">↓ PDF</button>
-            </div>
-          </div>
-          <div className="bg-surface border border-border overflow-hidden">
+      {/* Results Table */}
+      {phase === 'done' && allocations.length > 0 && (
+        <div>
+          <div className="font-mono text-[11px] uppercase tracking-[2px] text-[#7d8590] mb-3">Allocation Results</div>
+          <div className="bg-[#161b22] border border-[#30363d] overflow-hidden">
             <table className="w-full border-collapse">
-                <thead>
-                    <tr className="bg-surface2 border-b border-border">
-                        <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-[1.5px] text-muted font-medium">Date</th>
-                        <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-[1.5px] text-muted font-medium">Session</th>
-                        <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-[1.5px] text-muted font-medium">Room</th>
-                        <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-[1.5px] text-muted font-medium">Faculty 1</th>
-                        <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-[1.5px] text-muted font-medium">Faculty 2</th>
-                        <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-[1.5px] text-muted font-medium">Students</th>
-                        <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-[1.5px] text-muted font-medium">Status</th>
+              <thead>
+                <tr className="bg-[#1c2128] border-b border-[#30363d]">
+                  {['Date', 'Session', 'Room', 'Invigilator 1', 'Invigilator 2', 'Students', 'Status'].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-[1.5px] text-[#7d8590] font-medium whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {allocations.map(a => {
+                  const session = sessions.find(s => s.id === a.sessionId);
+                  const room = state.rooms.find(r => r.id === session?.roomId);
+                  return (
+                    <tr key={a.id || a.sessionId} className="hover:bg-[#1c2128] border-b border-[#30363d] last:border-0">
+                      <td className="px-4 py-[10px] font-mono text-xs">
+                        {session ? new Date(session.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
+                      </td>
+                      <td className="px-4 py-[10px] font-mono text-xs">{session?.slot} {session?.startTime}</td>
+                      <td className="px-4 py-[10px] font-mono text-xs">{room?.name.replace('Room ', '') || '—'}</td>
+                      <td className="px-4 py-[10px] text-xs">{a.f1Name || <span className="text-[#f85149]">Unassigned</span>}</td>
+                      <td className="px-4 py-[10px] text-xs">{a.f2Name || <span className="text-[#f85149]">Unassigned</span>}</td>
+                      <td className="px-4 py-[10px] font-mono text-xs">{a.studentCount}</td>
+                      <td className="px-4 py-[10px]">
+                        <span className={`pill ${a.status === 'assigned' ? 'pill-green' : 'pill-red'}`}>
+                          {a.status === 'assigned' ? '✓ Valid' : '✗ Unassigned'}
+                        </span>
+                      </td>
                     </tr>
-                </thead>
-                <tbody>
-                    {allocResults.map(r => (
-                        <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface2">
-                            <td className="px-4 py-[11px] font-mono text-xs">{r.date}</td>
-                            <td className="px-4 py-[11px] font-mono text-xs">{r.session}</td>
-                            <td className="px-4 py-[11px] font-mono text-xs">{r.room}</td>
-                            <td className="px-4 py-[11px] text-xs">{r.f1}</td>
-                            <td className="px-4 py-[11px] text-xs">{r.f2}</td>
-                            <td className="px-4 py-[11px] font-mono text-xs">{r.students}</td>
-                            <td className="px-4 py-[11px]"><span className="pill pill-green">✓ Valid</span></td>
-                        </tr>
-                    ))}
-                </tbody>
+                  );
+                })}
+              </tbody>
             </table>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function Field({ label, children }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="font-mono text-[10px] uppercase tracking-[1px] text-muted">{label}</label>
-      {children}
     </div>
   );
 }
