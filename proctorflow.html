@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProctorFlow — Exam Duty & Allocation System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: #30363d;
+    --accent: #f0a500;
+    --accent2: #1f6feb;
+    --green: #3fb950;
+    --red: #f85149;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; }
+
+  .topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; height: 56px; position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-weight: 600; font-size: 15px; }
+  .logo-icon {
+    width: 28px; height: 28px; background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #000;
+    clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%);
+  }
+  .logo span { color: var(--accent); }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .badge { font-family: var(--mono); font-size: 10px; padding: 3px 8px; border: 1px solid var(--accent); color: var(--accent); letter-spacing: 1px; text-transform: uppercase; }
+  .dept-label { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 56px); }
+
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; }
+  .nav-section { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 16px 20px 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 20px;
+    font-size: 13px; cursor: pointer; color: var(--muted); transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(240,165,0,0.06); }
+  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+  .nav-count { margin-left: auto; font-family: var(--mono); font-size: 10px; background: var(--surface2); padding: 2px 6px; color: var(--muted); }
+  .nav-count.alert { background: rgba(248,81,73,0.15); color: var(--red); }
+
+  .main { padding: 28px; overflow-y: auto; }
+  .page { display: none; animation: fadeIn 0.25s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
+  .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+  .page-subtitle { font-size: 12px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-family: var(--mono); font-size: 12px; cursor: pointer; border: 1px solid; transition: all 0.15s; letter-spacing: 0.3px; }
+  .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  .btn-primary:hover { background: #d4920a; }
+  .btn-outline { background: transparent; color: var(--text); border-color: var(--border); }
+  .btn-outline:hover { border-color: var(--muted); }
+  .btn-danger { background: transparent; color: var(--red); border-color: var(--red); }
+  .btn-danger:hover { background: rgba(248,81,73,0.1); }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); padding: 20px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .stat-card.c1::before { background: var(--accent); }
+  .stat-card.c2::before { background: var(--accent2); }
+  .stat-card.c3::before { background: var(--green); }
+  .stat-card.c4::before { background: var(--red); }
+  .stat-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; }
+  .stat-value { font-size: 32px; font-weight: 700; letter-spacing: -1px; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); overflow: hidden; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--surface2); border-bottom: 1px solid var(--border); }
+  th { text-align: left; padding: 10px 16px; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 500; }
+  td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  .mono-cell { font-family: var(--mono); font-size: 12px; }
+
+  .pill { display: inline-block; padding: 2px 8px; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.5px; border-radius: 2px; }
+  .pill-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .pill-yellow { background: rgba(240,165,0,0.15); color: var(--accent); }
+  .pill-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .pill-blue { background: rgba(31,111,235,0.2); color: #58a6ff; }
+
+  .load-bar { background: var(--surface2); height: 6px; border-radius: 1px; overflow: hidden; width: 90px; display: inline-block; vertical-align: middle; }
+  .load-fill { height: 100%; transition: width 0.5s ease; }
+
+  .engine-box { background: var(--surface); border: 1px solid var(--border); padding: 24px; margin-bottom: 24px; }
+  .engine-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .engine-desc { font-size: 12px; color: var(--muted); margin-bottom: 20px; font-family: var(--mono); }
+  .steps-row { display: flex; gap: 0; margin-bottom: 24px; }
+  .step { flex: 1; padding: 14px 16px; border: 1px solid var(--border); margin-right: -1px; background: var(--surface2); }
+  .step.done { border-color: var(--green); background: rgba(63,185,80,0.05); }
+  .step.active { border-color: var(--accent); background: rgba(240,165,0,0.06); }
+  .step-num { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+  .step-name { font-size: 12px; font-weight: 600; }
+  .step-status { font-size: 10px; margin-top: 4px; font-family: var(--mono); color: var(--muted); }
+  .step.done .step-status { color: var(--green); }
+  .step.active .step-status { color: var(--accent); }
+
+  .config-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .field input, .field select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; font-family: var(--mono); font-size: 12px; outline: none; transition: border-color 0.15s; }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: var(--surface2); }
+
+  .progress-container { display: none; margin-top: 20px; }
+  .progress-label { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .progress-bar { background: var(--surface2); height: 8px; border: 1px solid var(--border); overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.2s; position: relative; overflow: hidden; }
+  .progress-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%); animation: shimmer 1s infinite; }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(200%); } }
+  .progress-log { margin-top: 12px; background: #000; border: 1px solid var(--border); padding: 12px; height: 120px; overflow-y: auto; font-family: var(--mono); font-size: 11px; line-height: 1.7; }
+  .log-line { color: var(--muted); }
+  .log-line.ok { color: var(--green); }
+  .log-line.warn { color: var(--accent); }
+  .log-line.info { color: #58a6ff; }
+
+  .results-grid { display: none; margin-top: 24px; }
+
+  .leave-card { background: var(--surface); border: 1px solid var(--border); padding: 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .leave-info { flex: 1; }
+  .leave-name { font-size: 13px; font-weight: 600; }
+  .leave-detail { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .leave-dates { font-family: var(--mono); font-size: 11px; margin: 0 24px; color: var(--muted); }
+  .conflict-badge { font-family: var(--mono); font-size: 10px; padding: 4px 10px; background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+  .ok-badge { font-family: var(--mono); font-size: 10px; padding: 4px 10px; background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+
+  .seating-grid-wrap { background: var(--surface); border: 1px solid var(--border); padding: 24px; }
+  .room-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .room-title { font-size: 15px; font-weight: 600; }
+  .room-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .seat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 20px; }
+  .seat { background: var(--surface2); border: 1px solid var(--border); padding: 8px 6px; text-align: center; cursor: default; transition: all 0.15s; }
+  .seat:hover { border-color: var(--muted); transform: scale(1.03); }
+  .seat-num { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+  .seat-name { font-size: 10px; font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .seat-branch { font-family: var(--mono); font-size: 9px; margin-top: 1px; }
+  .seat.ise { border-color: rgba(31,111,235,0.5); background: rgba(31,111,235,0.08); }
+  .seat.ise .seat-branch { color: #58a6ff; }
+  .seat.cse { border-color: rgba(63,185,80,0.5); background: rgba(63,185,80,0.08); }
+  .seat.cse .seat-branch { color: var(--green); }
+  .seat.ece { border-color: rgba(240,165,0,0.5); background: rgba(240,165,0,0.08); }
+  .seat.ece .seat-branch { color: var(--accent); }
+  .seat.mech { border-color: rgba(248,81,73,0.5); background: rgba(248,81,73,0.08); }
+  .seat.mech .seat-branch { color: var(--red); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 1px; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--green); padding: 14px 20px; font-family: var(--mono); font-size: 12px; display: none; z-index: 999; color: var(--green); }
+
+  .search-bar { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 14px; font-family: var(--mono); font-size: 12px; outline: none; width: 240px; transition: border-color 0.15s; }
+  .search-bar:focus { border-color: var(--accent); }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">PF</div>
+    <span>Proctor</span>Flow
+  </div>
+  <div class="topbar-right">
+    <span class="dept-label">ISE Dept · DSCE · AY 2025-26</span>
+    <span class="badge">Admin</span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="nav-section">Navigation</div>
+    <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">◈</span> Dashboard</div>
+    <div class="nav-item" onclick="showPage('faculty')"><span class="nav-icon">◉</span> Faculty <span class="nav-count">18</span></div>
+    <div class="nav-item" onclick="showPage('leaves')"><span class="nav-icon">◷</span> Leave Requests <span class="nav-count alert">3</span></div>
+    <div class="nav-item" onclick="showPage('allocate')"><span class="nav-icon">⊞</span> Run Allocation</div>
+    <div class="nav-item" onclick="showPage('seating')"><span class="nav-icon">▦</span> Seating Chart</div>
+    <div class="nav-section" style="margin-top:12px;">Exam Schedule</div>
+    <div class="nav-item"><span class="nav-icon">◈</span> CIE – I <span class="nav-count">Done</span></div>
+    <div class="nav-item" style="color:var(--accent);border-left:2px solid transparent;" onclick="showPage('allocate')"><span class="nav-icon">◈</span> CIE – II <span class="nav-count" style="background:rgba(240,165,0,0.15);color:var(--accent)">Active</span></div>
+    <div class="nav-item"><span class="nav-icon">◈</span> SEE <span class="nav-count">Pending</span></div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">CIE-II · Nov 17–22, 2025 · 8 Exam Sessions</div>
+        </div>
+        <button class="btn btn-primary" onclick="showPage('allocate')">⊞ Run Allocation</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card c1"><div class="stat-label">Faculty Available</div><div class="stat-value">15</div><div class="stat-sub">3 on leave / restricted</div></div>
+        <div class="stat-card c2"><div class="stat-label">Exam Sessions</div><div class="stat-value">8</div><div class="stat-sub">4 rooms × 2 slots/day</div></div>
+        <div class="stat-card c3"><div class="stat-label">Students Enrolled</div><div class="stat-value">312</div><div class="stat-sub">Across 4 branches</div></div>
+        <div class="stat-card c4"><div class="stat-label">Conflicts Detected</div><div class="stat-value">3</div><div class="stat-sub">Leave window violations</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div class="section-header"><div class="section-title">Faculty Load — CIE II</div></div>
+          <div class="table-wrap"><table><thead><tr><th>Faculty</th><th>Duties</th><th>Load</th><th>Status</th></tr></thead><tbody id="load-table"></tbody></table></div>
+        </div>
+        <div>
+          <div class="section-header"><div class="section-title">Exam Schedule</div></div>
+          <div class="table-wrap"><table><thead><tr><th>Date</th><th>Slot</th><th>Subject</th><th>Room</th></tr></thead><tbody id="schedule-table"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FACULTY -->
+    <div class="page" id="page-faculty">
+      <div class="page-header">
+        <div><div class="page-title">Faculty Registry</div><div class="page-subtitle">ISE Department · 18 registered faculty</div></div>
+        <div style="display:flex;gap:10px;">
+          <input class="search-bar" placeholder="Search faculty..." oninput="filterFaculty(this.value)">
+          <button class="btn btn-outline">+ Add</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>#</th><th>Name</th><th>Designation</th><th>CIE-I Duties</th><th>Availability</th><th>Status</th></tr></thead><tbody id="faculty-table"></tbody></table>
+      </div>
+    </div>
+
+    <!-- LEAVES -->
+    <div class="page" id="page-leaves">
+      <div class="page-header">
+        <div><div class="page-title">Leave Requests</div><div class="page-subtitle">CIE-II window: Nov 14–25, 2025 (±3 day restriction)</div></div>
+        <button class="btn btn-outline">↓ Export</button>
+      </div>
+      <div style="background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);padding:12px 16px;margin-bottom:20px;font-family:var(--mono);font-size:12px;color:var(--red);">
+        ⚠ POLICY: No leave approved from Nov 14 to Nov 25 (3 days before + 3 days after exam window)
+      </div>
+      <div class="section-header"><div class="section-title">Pending Requests (3)</div></div>
+      <div id="leave-list"></div>
+      <div class="section-header" style="margin-top:24px;"><div class="section-title">Cleared / Approved (2)</div></div>
+      <div id="leave-cleared"></div>
+    </div>
+
+    <!-- ALLOCATION -->
+    <div class="page" id="page-allocate">
+      <div class="page-header">
+        <div><div class="page-title">Run Allocation Engine</div><div class="page-subtitle">Dynamic Priority-Based Resource Allocation Algorithm</div></div>
+      </div>
+      <div class="engine-box">
+        <div class="engine-title">Algorithm Pipeline</div>
+        <div class="engine-desc">Greedy allocation + backtracking with hard/soft constraint validation</div>
+        <div class="steps-row">
+          <div class="step" id="step1"><div class="step-num">01</div><div class="step-name">Constraint Classification</div><div class="step-status">Hard + Soft constraints</div></div>
+          <div class="step" id="step2"><div class="step-num">02</div><div class="step-name">Priority Queue Init</div><div class="step-status">Sort by load factor</div></div>
+          <div class="step" id="step3"><div class="step-num">03</div><div class="step-name">Greedy Allocation</div><div class="step-status">Backtrack on conflict</div></div>
+          <div class="step" id="step4"><div class="step-num">04</div><div class="step-name">Student Shuffling</div><div class="step-status">Fisher-Yates + gap constraint</div></div>
+        </div>
+        <div class="config-grid">
+          <div class="field"><label>Exam Event</label><select><option>CIE-II · Nov 17-22</option><option>SEE · Dec 2025</option></select></div>
+          <div class="field"><label>Algorithm Mode</label><select><option>Greedy + Backtrack</option><option>MILP Optimization</option><option>Genetic Algorithm</option></select></div>
+          <div class="field"><label>Max Duties/Faculty</label><input type="number" value="3" min="1" max="8"></div>
+          <div class="field"><label>Leave Buffer (days)</label><input type="number" value="3" min="1" max="5"></div>
+          <div class="field"><label>Branch Mix Constraint</label><select><option>Enforce (no adjacent same branch)</option><option>Soft (prefer mixed)</option><option>None</option></select></div>
+          <div class="field"><label>Room Repeat Prevention</label><select><option>Strict (never repeat)</option><option>Relaxed (allow after 3)</option></select></div>
+        </div>
+        <button class="btn btn-primary" onclick="runAllocation()" id="run-btn">▶ Run Allocation</button>
+        <button class="btn btn-outline" style="margin-left:10px;" onclick="resetAllocation()">↺ Reset</button>
+        <div class="progress-container" id="progress-area">
+          <div class="progress-label" id="progress-label">Initializing...</div>
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+          <div class="progress-log" id="progress-log"></div>
+        </div>
+      </div>
+      <div class="results-grid" id="results-area">
+        <div class="section-header">
+          <div class="section-title">Allocation Results — CIE II</div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline" onclick="showToast('PDF exported!')">↓ PDF</button>
+            <button class="btn btn-outline" onclick="showToast('CSV downloaded!')">↓ CSV</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Date</th><th>Session</th><th>Room</th><th>Faculty 1</th><th>Faculty 2</th><th>Students</th><th>Status</th></tr></thead><tbody id="alloc-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEATING -->
+    <div class="page" id="page-seating">
+      <div class="page-header">
+        <div><div class="page-title">Seating Chart</div><div class="page-subtitle">Anti-cheating layout · Fisher-Yates + Branch-Gap constraint</div></div>
+        <div style="display:flex;gap:10px;">
+          <select class="search-bar" style="width:auto;" onchange="loadRoom(this.value)">
+            <option value="A101">Room A101 · 40 seats</option>
+            <option value="A102">Room A102 · 42 seats</option>
+            <option value="B201">Room B201 · 38 seats</option>
+            <option value="B202">Room B202 · 36 seats</option>
+          </select>
+          <button class="btn btn-outline" onclick="reshuffleSeats()">↺ Reshuffle</button>
+          <button class="btn btn-outline" onclick="showToast('Exported!')">↓ Export</button>
+        </div>
+      </div>
+      <div class="seating-grid-wrap">
+        <div class="room-header">
+          <div>
+            <div class="room-title" id="room-title">Room A101</div>
+            <div class="room-meta" id="room-meta">40 seats · Nov 17 FN · Data Structures · Invigilators: Prof. Ramesh Kumar, Prof. Suresh Nair</div>
+          </div>
+          <span class="pill pill-green">✓ Conflict-free</span>
+        </div>
+        <div class="seat-grid" id="seat-grid"></div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(31,111,235,0.6)"></div> ISE</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(63,185,80,0.6)"></div> CSE</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(240,165,0,0.6)"></div> ECE</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(248,81,73,0.6)"></div> MECH</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const faculty = [
+  { name:'Prof. Ramesh Kumar', desg:'Professor', duties:2, available:true },
+  { name:'Prof. Anita Sharma', desg:'Assoc. Professor', duties:3, available:true },
+  { name:'Prof. Suresh Nair', desg:'Asst. Professor', duties:1, available:true },
+  { name:'Prof. Meena Rao', desg:'Asst. Professor', duties:2, available:false },
+  { name:'Prof. Kiran Bhat', desg:'Professor', duties:0, available:true },
+  { name:'Prof. Priya Dev', desg:'Asst. Professor', duties:1, available:true },
+  { name:'Prof. Yogesh BS', desg:'Asst. Professor', duties:2, available:true },
+  { name:'Prof. Kavitha M', desg:'Assoc. Professor', duties:3, available:false },
+  { name:'Prof. Ravi S', desg:'Asst. Professor', duties:1, available:true },
+  { name:'Prof. Deepa J', desg:'Professor', duties:2, available:true },
+  { name:'Prof. Arjun T', desg:'Asst. Professor', duties:0, available:true },
+  { name:'Prof. Sindhu K', desg:'Assoc. Professor', duties:1, available:true },
+  { name:'Prof. Mahesh V', desg:'Asst. Professor', duties:2, available:true },
+  { name:'Prof. Usha P', desg:'Professor', duties:3, available:true },
+  { name:'Prof. Ajay L', desg:'Asst. Professor', duties:1, available:false },
+  { name:'Prof. Sneha R', desg:'Asst. Professor', duties:0, available:true },
+  { name:'Prof. Harish N', desg:'Assoc. Professor', duties:2, available:true },
+  { name:'Prof. Latha S', desg:'Professor', duties:1, available:true },
+];
+
+const schedule = [
+  {date:'17 Nov',slot:'FN 9:30',subject:'Data Structures',room:'A101'},
+  {date:'17 Nov',slot:'AN 1:30',subject:'DBMS',room:'A102'},
+  {date:'18 Nov',slot:'FN 9:30',subject:'Computer Networks',room:'B201'},
+  {date:'18 Nov',slot:'AN 1:30',subject:'OS',room:'B202'},
+  {date:'19 Nov',slot:'FN 9:30',subject:'TOC',room:'A101'},
+  {date:'19 Nov',slot:'AN 1:30',subject:'DAA',room:'A102'},
+  {date:'20 Nov',slot:'FN 9:30',subject:'Microprocessors',room:'B201'},
+  {date:'20 Nov',slot:'AN 1:30',subject:'Elective I',room:'B202'},
+];
+
+const leaves = [
+  {name:'Prof. Meena Rao',desg:'Asst. Professor',from:'Nov 15',to:'Nov 17',reason:'Medical',conflict:true},
+  {name:'Prof. Kavitha M',desg:'Assoc. Professor',from:'Nov 18',to:'Nov 19',reason:'Personal',conflict:true},
+  {name:'Prof. Ajay L',desg:'Asst. Professor',from:'Nov 22',to:'Nov 23',reason:'Conference',conflict:true},
+];
+const leavesOk = [
+  {name:'Prof. Ravi S',desg:'Asst. Professor',from:'Nov 27',to:'Nov 28',reason:'Family'},
+  {name:'Prof. Sneha R',desg:'Asst. Professor',from:'Nov 30',to:'Dec 1',reason:'Personal'},
+];
+
+const allocResults = [
+  {date:'17 Nov',session:'FN 9:30',room:'A101',f1:'Prof. Ramesh Kumar',f2:'Prof. Suresh Nair',students:40},
+  {date:'17 Nov',session:'AN 1:30',room:'A102',f1:'Prof. Anita Sharma',f2:'Prof. Priya Dev',students:38},
+  {date:'18 Nov',session:'FN 9:30',room:'B201',f1:'Prof. Kiran Bhat',f2:'Prof. Yogesh BS',students:42},
+  {date:'18 Nov',session:'AN 1:30',room:'B202',f1:'Prof. Ravi S',f2:'Prof. Deepa J',students:36},
+  {date:'19 Nov',session:'FN 9:30',room:'A101',f1:'Prof. Arjun T',f2:'Prof. Sindhu K',students:40},
+  {date:'19 Nov',session:'AN 1:30',room:'A102',f1:'Prof. Mahesh V',f2:'Prof. Usha P',students:38},
+  {date:'20 Nov',session:'FN 9:30',room:'B201',f1:'Prof. Harish N',f2:'Prof. Latha S',students:42},
+  {date:'20 Nov',session:'AN 1:30',room:'B202',f1:'Prof. Ramesh Kumar',f2:'Prof. Anita Sharma',students:36},
+];
+
+const logs = [
+  ['info','[ INIT ] Loading faculty dataset: 18 records'],
+  ['info','[ INIT ] Loading exam schedule: 8 sessions'],
+  ['warn','[ WARN ] Prof. Meena Rao — leave conflicts with exam window. Excluded.'],
+  ['warn','[ WARN ] Prof. Kavitha M — leave conflicts with exam window. Excluded.'],
+  ['warn','[ WARN ] Prof. Ajay L — leave conflicts with exam window. Excluded.'],
+  ['ok',  '[ STEP1 ] Hard constraints: leave, room capacity, timetable clashes'],
+  ['ok',  '[ STEP1 ] Soft constraints: workload fairness, room non-repetition'],
+  ['ok',  '[ STEP2 ] Priority queue initialized — 15 eligible faculty, sorted by load factor'],
+  ['info','[ STEP3 ] Assigning session 1: Nov 17 FN → A101'],
+  ['ok',  '[ STEP3 ] → Assigned: Prof. Ramesh Kumar (load:2) + Prof. Suresh Nair (load:1)'],
+  ['info','[ STEP3 ] Assigning session 2: Nov 17 AN → A102'],
+  ['ok',  '[ STEP3 ] → Assigned: Prof. Anita Sharma + Prof. Priya Dev'],
+  ['info','[ STEP3 ] Assigning sessions 3–8...'],
+  ['ok',  '[ STEP3 ] All 8 sessions assigned. No backtracking required.'],
+  ['ok',  '[ STEP4 ] Fisher-Yates shuffle with gap constraint applied to 312 students'],
+  ['ok',  '[ STEP4 ] Adjacency check: 0 same-branch neighbors detected'],
+  ['ok',  '[ DONE ] Allocation complete. Duty chart ready for export.'],
+];
+
+const branches = ['ise','cse','ece','mech'];
+const branchNames = {ise:'ISE',cse:'CSE',ece:'ECE',mech:'MECH'};
+const firstNames = ['Aarav','Rahul','Priya','Sneha','Arjun','Kavya','Ravi','Deepa','Kiran','Meena','Suresh','Anita','Harish','Latha','Ajay','Sindhu','Mahesh','Usha','Nidhi','Vikram','Pooja','Nikhil','Swathi','Rohan','Divya','Arun'];
+
+function randName(seed) {
+  const s = Math.abs(Math.sin(seed * 9301 + 49297) * 233280) % 1;
+  const s2 = Math.abs(Math.sin(seed * 7 + 1) * 233280) % 1;
+  return firstNames[Math.floor(s * firstNames.length)] + ' ' + String.fromCharCode(65 + Math.floor(s2 * 26)) + '.';
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+}
+
+function renderLoadTable() {
+  const tb = document.getElementById('load-table');
+  tb.innerHTML = faculty.slice(0, 8).map(f => {
+    const pct = Math.round(f.duties / 3 * 100);
+    const color = pct >= 100 ? '#f85149' : pct >= 66 ? '#f0a500' : '#3fb950';
+    return `<tr>
+      <td>${f.name.replace('Prof. ','')}</td>
+      <td class="mono-cell">${f.duties}/3</td>
+      <td><div class="load-bar"><div class="load-fill" style="width:${pct}%;background:${color}"></div></div></td>
+      <td>${f.available ? '<span class="pill pill-green">Active</span>' : '<span class="pill pill-red">Leave</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderSchedule() {
+  document.getElementById('schedule-table').innerHTML = schedule.map(s =>
+    `<tr><td class="mono-cell">${s.date}</td><td class="mono-cell">${s.slot}</td><td>${s.subject}</td><td class="mono-cell">${s.room}</td></tr>`
+  ).join('');
+}
+
+function renderFaculty(data) {
+  document.getElementById('faculty-table').innerHTML = data.map((f, i) => {
+    const pc = f.duties >= 3 ? 'pill-red' : f.duties >= 2 ? 'pill-yellow' : 'pill-green';
+    return `<tr>
+      <td class="mono-cell">${String(i+1).padStart(2,'0')}</td>
+      <td><b>${f.name}</b></td>
+      <td style="color:var(--muted);font-size:12px">${f.desg}</td>
+      <td><span class="pill ${pc}">${f.duties} duties</span></td>
+      <td>${f.available ? '<span class="pill pill-green">✓ Available</span>' : '<span class="pill pill-red">✗ On Leave</span>'}</td>
+      <td><span class="pill ${f.available ? 'pill-blue' : 'pill-red'}">${f.available ? 'Eligible' : 'Restricted'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterFaculty(q) {
+  renderFaculty(faculty.filter(f => f.name.toLowerCase().includes(q.toLowerCase())));
+}
+
+function renderLeaves() {
+  document.getElementById('leave-list').innerHTML = leaves.map(l => `
+    <div class="leave-card">
+      <div class="leave-info"><div class="leave-name">${l.name}</div><div class="leave-detail">${l.desg} · Reason: ${l.reason}</div></div>
+      <div class="leave-dates">${l.from} → ${l.to}</div>
+      <div class="conflict-badge">✗ WINDOW CONFLICT</div>
+      <button class="btn btn-danger" style="margin-left:12px;font-size:10px;padding:5px 10px" onclick="showToast('Leave rejected. Faculty notified.')">Reject</button>
+    </div>`).join('');
+  document.getElementById('leave-cleared').innerHTML = leavesOk.map(l => `
+    <div class="leave-card">
+      <div class="leave-info"><div class="leave-name">${l.name}</div><div class="leave-detail">${l.desg} · Reason: ${l.reason}</div></div>
+      <div class="leave-dates">${l.from} → ${l.to}</div>
+      <div class="ok-badge">✓ APPROVED</div>
+    </div>`).join('');
+}
+
+let allocDone = false;
+function runAllocation() {
+  if (allocDone) return;
+  document.getElementById('run-btn').disabled = true;
+  const pArea = document.getElementById('progress-area');
+  pArea.style.display = 'block';
+  const fill = document.getElementById('progress-fill');
+  const label = document.getElementById('progress-label');
+  const log = document.getElementById('progress-log');
+  log.innerHTML = '';
+  let pct = 0, logIdx = 0;
+
+  const milestones = [
+    {at:10,id:'step1',msg:'Classifying constraints...'},
+    {at:35,id:'step2',msg:'Building priority queue...'},
+    {at:65,id:'step3',msg:'Running greedy allocation...'},
+    {at:88,id:'step4',msg:'Shuffling students...'},
+  ];
+
+  const timer = setInterval(() => {
+    pct = Math.min(pct + 2, 100);
+    fill.style.width = pct + '%';
+    milestones.forEach(m => {
+      const el = document.getElementById(m.id);
+      if (pct === m.at) { el.classList.add('active'); label.textContent = m.msg; }
+      if (pct > m.at + 10) { el.classList.remove('active'); el.classList.add('done'); }
+    });
+    if (logIdx < logs.length && pct >= (logIdx / logs.length) * 95) {
+      const [type, msg] = logs[logIdx++];
+      const div = document.createElement('div');
+      div.className = 'log-line ' + type;
+      div.textContent = msg;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+    if (pct >= 100) {
+      clearInterval(timer);
+      allocDone = true;
+      milestones.forEach(m => { document.getElementById(m.id).classList.remove('active'); document.getElementById(m.id).classList.add('done'); });
+      label.textContent = '✓ Allocation complete — 8 sessions assigned, 0 conflicts';
+      label.style.color = 'var(--green)';
+      renderAllocResults();
+      document.getElementById('results-area').style.display = 'block';
+      showToast('✓ Allocation complete!');
+    }
+  }, 60);
+}
+
+function resetAllocation() {
+  allocDone = false;
+  document.getElementById('run-btn').disabled = false;
+  document.getElementById('progress-area').style.display = 'none';
+  document.getElementById('results-area').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-label').textContent = 'Initializing...';
+  document.getElementById('progress-label').style.color = '';
+  document.getElementById('progress-log').innerHTML = '';
+  ['step1','step2','step3','step4'].forEach(s => { document.getElementById(s).className = 'step'; });
+}
+
+function renderAllocResults() {
+  document.getElementById('alloc-table').innerHTML = allocResults.map(r =>
+    `<tr><td class="mono-cell">${r.date}</td><td class="mono-cell">${r.session}</td><td class="mono-cell">${r.room}</td><td style="font-size:12px">${r.f1}</td><td style="font-size:12px">${r.f2}</td><td class="mono-cell">${r.students}</td><td><span class="pill pill-green">✓ Valid</span></td></tr>`
+  ).join('');
+}
+
+function generateSeats(count, seed) {
+  const pool = [];
+  branches.forEach((b, bi) => {
+    for (let i = 0; i < Math.ceil(count/4); i++) pool.push({branch:b, name:randName(bi*100+i+seed*7)});
+  });
+  // Fisher-Yates
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.abs(Math.sin((i+1)*(seed+1)) * 999999)) % (i+1);
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  // Fix adjacency
+  for (let i = 1; i < pool.length; i++) {
+    if (pool[i].branch === pool[i-1].branch) {
+      for (let j = i+1; j < pool.length; j++) {
+        if (pool[j].branch !== pool[i-1].branch) { [pool[i], pool[j]] = [pool[j], pool[i]]; break; }
+      }
+    }
+  }
+  return pool.slice(0, count);
+}
+
+let currentSeed = 42;
+const roomConfigs = {
+  'A101':{name:'Room A101',meta:'40 seats · Nov 17 FN · Data Structures · Invigilators: Prof. Ramesh Kumar, Prof. Suresh Nair',count:40},
+  'A102':{name:'Room A102',meta:'42 seats · Nov 17 AN · DBMS · Invigilators: Prof. Anita Sharma, Prof. Priya Dev',count:42},
+  'B201':{name:'Room B201',meta:'38 seats · Nov 18 FN · Computer Networks · Invigilators: Prof. Kiran Bhat, Prof. Yogesh BS',count:38},
+  'B202':{name:'Room B202',meta:'36 seats · Nov 18 AN · OS · Invigilators: Prof. Ravi S, Prof. Deepa J',count:36},
+};
+
+function loadRoom(room) {
+  const c = roomConfigs[room];
+  document.getElementById('room-title').textContent = c.name;
+  document.getElementById('room-meta').textContent = c.meta;
+  const seats = generateSeats(c.count, currentSeed);
+  document.getElementById('seat-grid').innerHTML = seats.map((s, i) =>
+    `<div class="seat ${s.branch}" title="${s.name} · ${branchNames[s.branch]}">
+      <div class="seat-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="seat-name">${s.name}</div>
+      <div class="seat-branch">${branchNames[s.branch]}</div>
+    </div>`
+  ).join('');
+}
+
+function reshuffleSeats() {
+  currentSeed = Math.floor(Math.random() * 9999);
+  const sel = document.querySelector('#page-seating select');
+  loadRoom(sel.value);
+  showToast('↺ Seats reshuffled');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.animation = 'none';
+  t.offsetHeight;
+  t.style.animation = '';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+renderLoadTable();
+renderSchedule();
+renderFaculty(faculty);
+renderLeaves();
+loadRoom('A101');
+</script>
+</body>
+</html>
