@@ -6,7 +6,6 @@ import { useToast } from '../components/common/Toast';
 
 const DEMO_CREDS = [
   { label: 'Admin / HOD', email: 'admin@proctorflow.edu', password: 'admin123', color: 'var(--color-accent)' },
-  { label: 'Faculty', email: 'faculty@proctorflow.edu', password: 'faculty123', color: 'var(--color-accent2)' },
   { label: 'Student', email: 'student@proctorflow.edu', password: 'student123', color: 'var(--color-green)' },
 ];
 

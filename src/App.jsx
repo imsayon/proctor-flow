@@ -62,7 +62,7 @@ function AppRoutes() {
       />
 
       {/* Admin / Faculty */}
-      <Route element={<RequireAuth allowedRoles={['admin', 'faculty']} />}>
+      <Route element={<RequireAuth allowedRoles={['admin']} />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/faculty" element={<Faculty />} />

@@ -6,7 +6,6 @@ const AuthContext = createContext();
 // Demo accounts — In production this would use Firebase Auth custom claims
 const DEMO_ACCOUNTS = {
   'admin@proctorflow.edu': { password: 'admin123', role: 'admin', name: 'Dr. K. Ramesh (HOD)', dept: 'ISE' },
-  'faculty@proctorflow.edu': { password: 'faculty123', role: 'faculty', name: 'Prof. Ramesh Kumar', dept: 'ISE' },
   'student@proctorflow.edu': { password: 'student123', role: 'student', name: 'Aarav Sharma', rollNo: '1DS22IS001', branch: 'ISE' },
 };
 
@@ -38,7 +37,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin: user?.role === 'admin', isFaculty: user?.role === 'faculty', isStudent: user?.role === 'student' }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin: user?.role === 'admin', isStudent: user?.role === 'student' }}>
       {children}
     </AuthContext.Provider>
   );

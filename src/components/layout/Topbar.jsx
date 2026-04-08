@@ -11,8 +11,8 @@ export default function Topbar() {
     navigate('/login');
   };
 
-  const roleColor = user?.role === 'admin' ? '#f0a500' : user?.role === 'faculty' ? '#58a6ff' : '#3fb950';
-  const roleLabel = user?.role === 'admin' ? 'Admin' : user?.role === 'faculty' ? 'Faculty' : 'Student';
+  const roleColor = user?.role === 'admin' ? '#f0a500' : '#3fb950';
+  const roleLabel = user?.role === 'admin' ? 'Admin' : 'Student';
 
   return (
     <div className="bg-[#161b22] border-b border-[#30363d] flex items-center justify-between px-7 h-14 sticky top-0 z-50">
