@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../common/Toast';
 import { runGreedyAllocation } from '../../utils/algorithm';
+import { exportCSV, exportPDF } from '../../utils/export';
 
 const ALGO_STEPS = [
   { id: 'step1', num: '01', name: 'Constraint Classification', desc: 'Hard + Soft constraints' },
@@ -39,7 +40,6 @@ export default function Allocate() {
     setCurrentStep(0);
     dispatch({ type: 'CLEAR_ALLOCATIONS' });
 
-    // Animate progress through steps
     const stepDuration = 600;
     for (let i = 0; i < ALGO_STEPS.length; i++) {
       setCurrentStep(i);
@@ -47,7 +47,6 @@ export default function Allocate() {
       setProgress((i + 1) * 25);
     }
 
-    // Run real algorithm
     const { allocations, logs: algoLogs } = runGreedyAllocation(
       state.sessions, state.faculty, state.leaves, config
     );
@@ -73,6 +72,18 @@ export default function Allocate() {
     dispatch({ type: 'CLEAR_ALLOCATIONS' });
   };
 
+  const handleExportCSV = () => {
+    if (!state.allocations.length) { toast('Run allocation first!', 'error'); return; }
+    exportCSV(state.allocations, state.sessions, state.rooms);
+    toast('✓ CSV downloaded!');
+  };
+
+  const handleExportPDF = () => {
+    if (!state.allocations.length) { toast('Run allocation first!', 'error'); return; }
+    exportPDF(state.allocations, state.sessions, state.rooms);
+    toast('✓ PDF ready — check your print dialog');
+  };
+
   const allocations = state.allocations;
   const sessions = state.sessions;
 
@@ -81,8 +92,19 @@ export default function Allocate() {
       <div className="flex items-start justify-between mb-7">
         <div>
           <div className="text-[22px] font-semibold tracking-tight">Allocation Engine</div>
-          <div className="text-xs text-[#7d8590] mt-1 font-mono">Greedy + Backtracking · Hard & Soft Constraint Validation</div>
+          <div className="text-xs text-[#7d8590] mt-1 font-mono">Greedy + Backtracking · Hard &amp; Soft Constraint Validation</div>
         </div>
+        {/* Export buttons always visible if data exists */}
+        {allocations.length > 0 && (
+          <div className="flex gap-2">
+            <button onClick={handleExportCSV} className="btn btn-outline text-xs flex items-center gap-1.5">
+              ↓ CSV
+            </button>
+            <button onClick={handleExportPDF} className="btn btn-outline text-xs flex items-center gap-1.5">
+              ↓ PDF
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Algorithm Pipeline */}
@@ -145,7 +167,9 @@ export default function Allocate() {
         {phase !== 'idle' && (
           <div className="mt-5">
             <div className={`font-mono text-[11px] mb-2 ${phase === 'done' ? 'text-[#3fb950]' : 'text-[#7d8590]'}`}>
-              {phase === 'done' ? `✓ Allocation complete — ${allocations.filter(a => a.status === 'assigned').length}/${sessions.length} sessions` : 'Processing...'}
+              {phase === 'done'
+                ? `✓ Allocation complete — ${allocations.filter(a => a.status === 'assigned').length}/${sessions.length} sessions assigned`
+                : 'Processing...'}
             </div>
             <div className="bg-[#1c2128] h-2 border border-[#30363d] overflow-hidden mb-3 relative">
               <div className="h-full bg-[#f0a500] transition-all duration-500 relative overflow-hidden" style={{ width: `${progress}%` }}>
@@ -164,29 +188,47 @@ export default function Allocate() {
       </div>
 
       {/* Results Table */}
-      {phase === 'done' && allocations.length > 0 && (
+      {allocations.length > 0 && (
         <div>
-          <div className="font-mono text-[11px] uppercase tracking-[2px] text-[#7d8590] mb-3">Allocation Results</div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="font-mono text-[11px] uppercase tracking-[2px] text-[#7d8590]">
+              Allocation Results
+              <span className="ml-3 text-[#3fb950]">{allocations.filter(a => a.status === 'assigned').length}/{sessions.length} assigned</span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleExportCSV} className="btn btn-outline text-[10px] !py-1 !px-3 gap-1">
+                ↓ Download CSV
+              </button>
+              <button onClick={handleExportPDF} className="btn btn-outline text-[10px] !py-1 !px-3 gap-1">
+                ↓ Print / PDF
+              </button>
+            </div>
+          </div>
           <div className="bg-[#161b22] border border-[#30363d] overflow-hidden">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-[#1c2128] border-b border-[#30363d]">
-                  {['Date', 'Session', 'Room', 'Invigilator 1', 'Invigilator 2', 'Students', 'Status'].map(h => (
+                  {['#', 'Date', 'Session', 'Subject', 'Room', 'Invigilator 1', 'Invigilator 2', 'Students', 'Status'].map(h => (
                     <th key={h} className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-[1.5px] text-[#7d8590] font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {allocations.map(a => {
+                {allocations.map((a, idx) => {
                   const session = sessions.find(s => s.id === a.sessionId);
                   const room = state.rooms.find(r => r.id === session?.roomId);
                   return (
-                    <tr key={a.id || a.sessionId} className="hover:bg-[#1c2128] border-b border-[#30363d] last:border-0">
+                    <tr key={a.id || a.sessionId} className="hover:bg-[#1c2128] border-b border-[#30363d] last:border-0 transition-colors">
+                      <td className="px-4 py-[10px] font-mono text-xs text-[#7d8590]">{String(idx + 1).padStart(2, '0')}</td>
                       <td className="px-4 py-[10px] font-mono text-xs">
                         {session ? new Date(session.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
                       </td>
-                      <td className="px-4 py-[10px] font-mono text-xs">{session?.slot} {session?.startTime}</td>
-                      <td className="px-4 py-[10px] font-mono text-xs">{room?.name.replace('Room ', '') || '—'}</td>
+                      <td className="px-4 py-[10px] font-mono text-xs">
+                        {session?.slot && <span className={`pill ${session.slot === 'FN' ? 'pill-blue' : session.slot === 'AN' ? 'pill-yellow' : 'pill-green'} mr-1`}>{session.slot}</span>}
+                        {session?.startTime}
+                      </td>
+                      <td className="px-4 py-[10px] text-xs font-medium max-w-[140px] truncate">{session?.subject || '—'}</td>
+                      <td className="px-4 py-[10px] font-mono text-xs">{room?.name?.replace('Room ', '') || '—'}</td>
                       <td className="px-4 py-[10px] text-xs">{a.f1Name || <span className="text-[#f85149]">Unassigned</span>}</td>
                       <td className="px-4 py-[10px] text-xs">{a.f2Name || <span className="text-[#f85149]">Unassigned</span>}</td>
                       <td className="px-4 py-[10px] font-mono text-xs">{a.studentCount}</td>
