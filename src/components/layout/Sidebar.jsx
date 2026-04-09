@@ -2,81 +2,75 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
+import { useExam, STATE_COLORS } from '../../context/ExamContext';
+
+const adminLinks = [
+  { to: '/', label: 'Dashboard', icon: '◆' },
+  { to: '/events', label: 'Exam Events', icon: '📅' },
+  { to: '/faculty', label: 'Faculty', icon: '👤' },
+  { to: '/rooms', label: 'Rooms', icon: '🏛' },
+  { to: '/schedule', label: 'Schedule', icon: '📋' },
+  { to: '/leaves', label: 'Leaves', icon: '📝' },
+  { to: '/allocate', label: 'Allocate', icon: '⚡' },
+  { to: '/seating', label: 'Seating', icon: '▦' },
+  { to: '/rag', label: 'RAG Import', icon: '📄' },
+];
+
+const studentLinks = [
+  { to: '/student', label: 'My Dashboard', icon: '◆' },
+  { to: '/student/seat', label: 'My Seat', icon: '▦' },
+];
 
 export default function Sidebar() {
   const { user } = useAuth();
   const { state } = useApp();
+  const { currentEvent } = useExam();
+  const isStudent = user?.role === 'student';
+  const links = isStudent ? studentLinks : adminLinks;
 
-  const pendingLeaves = state.leaves.filter(l => l.status === 'pending').length;
-  const unassigned = state.allocations.filter(a => a.status === 'unassigned').length;
-
-  const adminRoutes = [
-    { path: '/', name: 'Dashboard', icon: '◈', end: true },
-    { path: '/faculty', name: 'Faculty', icon: '◉', count: String(state.faculty.length) },
-    { path: '/rooms', name: 'Room Config', icon: '⊟' },
-    { path: '/schedule', name: 'Exam Schedule', icon: '📅' },
-    { path: '/leaves', name: 'Leave Requests', icon: '◷', count: pendingLeaves > 0 ? String(pendingLeaves) : null, alert: pendingLeaves > 0 },
-    { path: '/allocate', name: 'Run Allocation', icon: '⊞', count: unassigned > 0 ? `${unassigned} pending` : null, alert: unassigned > 0 },
-    { path: '/seating', name: 'Seating Chart', icon: '▦' },
-  ];
-
-  const studentRoutes = [
-    { path: '/student', name: 'My Dashboard', icon: '◈', end: true },
-    { path: '/student/schedule', name: 'My Schedule', icon: '📅' },
-    { path: '/student/seat', name: 'My Seat', icon: '▦' },
-  ];
-
-  const routes = user?.role === 'student' ? studentRoutes : adminRoutes;
+  const badges = {
+    '/faculty': state.faculty.length,
+    '/schedule': state.sessions.length,
+    '/leaves': state.leaves.filter(l => l.status === 'pending').length,
+    '/allocate': state.allocations.length,
+  };
 
   return (
-    <div className="w-[220px] bg-[#161b22] border-r border-[#30363d] py-5 flex-shrink-0 flex flex-col">
-      <div className="font-mono text-[9px] tracking-[2px] uppercase text-[#7d8590] px-5 pt-2 pb-2">
-        {user?.role === 'student' ? 'Student Portal' : 'Administration'}
-      </div>
-      {routes.map((r) => (
-        <NavLink
-          key={r.path}
-          to={r.path}
-          end={r.end}
-          className={({ isActive }) =>
-            `flex items-center gap-[10px] py-[9px] px-5 text-[13px] cursor-pointer transition-all duration-150 border-l-2 ${
-              isActive
-                ? 'text-[#f0a500] border-[#f0a500] bg-[#f0a500]/10'
-                : 'text-[#7d8590] border-transparent hover:text-[#e6edf3] hover:bg-[#1c2128]'
-            }`
-          }
-        >
-          <span className="text-[15px] w-[18px] text-center">{r.icon}</span>
-          {r.name}
-          {r.count && (
-            <span className={`ml-auto font-mono text-[10px] px-[6px] py-[2px] ${
-              r.alert ? 'bg-[#f85149]/15 text-[#f85149]' : 'bg-[#1c2128] text-[#7d8590]'
-            }`}>
-              {r.count}
-            </span>
-          )}
-        </NavLink>
-      ))}
-
-      {user?.role !== 'student' && (
-        <>
-          <div className="font-mono text-[9px] tracking-[2px] uppercase text-[#7d8590] px-5 pt-4 pb-2 mt-2 border-t border-[#30363d]">
-            CIE Status
+    <div className="w-[220px] bg-[#161b22] border-r border-[#30363d] flex flex-col min-h-0 flex-shrink-0">
+      {/* Active event indicator */}
+      {!isStudent && currentEvent && (
+        <div className="px-4 py-3 border-b border-[#30363d]">
+          <div className="font-mono text-[9px] text-[#7d8590] uppercase tracking-[1px] mb-1">Active Event</div>
+          <div className="text-xs font-medium truncate">{currentEvent.name}</div>
+          <div className="flex items-center gap-1 mt-1">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATE_COLORS[currentEvent.status]?.dot }} />
+            <span className="font-mono text-[9px]" style={{ color: STATE_COLORS[currentEvent.status]?.dot }}>{currentEvent.status}</span>
           </div>
-          <div className="flex items-center gap-[10px] py-[9px] px-5 text-[13px] text-[#7d8590] border-l-2 border-transparent">
-            <span className="text-[15px] w-[18px] text-center">◈</span> CIE – I
-            <span className="ml-auto font-mono text-[10px] px-[6px] py-[2px] bg-[#1c2128] text-[#7d8590]">Done</span>
-          </div>
-          <div className="flex items-center gap-[10px] py-[9px] px-5 text-[13px] text-[#f0a500] border-l-2 border-transparent">
-            <span className="text-[15px] w-[18px] text-center">◈</span> CIE – II
-            <span className="ml-auto font-mono text-[10px] px-[6px] py-[2px] bg-[#f0a500]/15 text-[#f0a500]">Active</span>
-          </div>
-          <div className="flex items-center gap-[10px] py-[9px] px-5 text-[13px] text-[#7d8590] border-l-2 border-transparent">
-            <span className="text-[15px] w-[18px] text-center">◈</span> SEE
-            <span className="ml-auto font-mono text-[10px] px-[6px] py-[2px] bg-[#1c2128] text-[#7d8590]">Pending</span>
-          </div>
-        </>
+        </div>
       )}
+
+      <nav className="flex-1 py-2 overflow-y-auto">
+        {links.map(link => (
+          <NavLink key={link.to} to={link.to} end={link.to === '/' || link.to === '/student'}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 px-5 py-2.5 text-xs transition-colors border-l-2 ${
+                isActive ? 'border-[#f0a500] bg-[#f0a500]/5 text-[#e6edf3]' : 'border-transparent text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#1c2128]'
+              }`
+            }>
+            <span className="text-sm">{link.icon}</span>
+            <span className="flex-1">{link.label}</span>
+            {badges[link.to] > 0 && (
+              <span className="font-mono text-[9px] text-[#7d8590] bg-[#30363d] px-1.5 py-0.5">{badges[link.to]}</span>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-[#30363d]">
+        <div className="font-mono text-[8px] text-[#484f58]">ProctorFlow v3</div>
+        <div className="font-mono text-[8px] text-[#484f58]">ISE Dept · DSCE</div>
+      </div>
     </div>
   );
 }

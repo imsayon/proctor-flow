@@ -1,6 +1,7 @@
 // src/components/schedule/Schedule.jsx
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useExam } from '../../context/ExamContext';
 import { useToast } from '../common/Toast';
 import Modal from '../common/Modal';
 import Confirm from '../common/Confirm';
@@ -90,6 +91,7 @@ function SessionForm({ initial, rooms, onSave, onCancel }) {
 
 export default function Schedule() {
   const { state, dispatch } = useApp();
+  const { currentEvent } = useExam();
   const toast = useToast();
   const [modal, setModal] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -98,7 +100,8 @@ export default function Schedule() {
 
   const handleAdd = (form) => {
     const id = 's' + Date.now();
-    dispatch({ type: 'ADD_SESSION', payload: { ...form, id } });
+    const eventId = currentEvent?.id || state.examEvents?.[0]?.id || null;
+    dispatch({ type: 'ADD_SESSION', payload: { ...form, id, eventId } });
     toast('✓ Session added: ' + form.subject);
     setModal(null);
   };
@@ -126,7 +129,7 @@ export default function Schedule() {
       <div className="flex items-start justify-between mb-7">
         <div>
           <div className="text-[22px] font-semibold tracking-tight">Exam Schedule</div>
-          <div className="text-xs text-[#7d8590] mt-1 font-mono">CIE-II · {state.sessions.length} sessions configured</div>
+          <div className="text-xs text-[#7d8590] mt-1 font-mono">{currentEvent?.name || 'All events'} · {state.sessions.length} sessions configured</div>
         </div>
         <button className="btn btn-primary" onClick={() => setModal('add')}>+ Add Session</button>
       </div>

@@ -1,6 +1,6 @@
 // src/components/leaves/Leaves.jsx
 import { useState } from 'react';
-import { useApp, EXAM_WINDOW } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { useToast } from '../common/Toast';
 import Modal from '../common/Modal';
 
@@ -27,7 +27,7 @@ export default function Leaves() {
 
   const handleStatusChange = (id, status) => {
     const leave = state.leaves.find(l => l.id === id);
-    dispatch({ type: 'UPDATE_LEAVE_STATUS', payload: { id, status, facultyId: leave.facultyId } });
+    dispatch({ type: 'UPDATE_LEAVE', payload: { id, status } });
     toast(status === 'approved' ? '✓ Leave approved' : 'Leave rejected', status === 'approved' ? 'success' : 'warn');
   };
 
@@ -137,7 +137,7 @@ export default function Leaves() {
 
       {/* Add Leave Modal */}
       {modal && (
-        <Modal title="Add Leave Request" onClose={() => setModal(false)}>
+        <Modal isOpen={modal} title="Add Leave Request" onClose={() => setModal(false)}>
           <div className="space-y-4">
             <div className="flex flex-col gap-1.5">
               <label className="font-mono text-[10px] uppercase tracking-[1px] text-[#7d8590]">Faculty Member</label>

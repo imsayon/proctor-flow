@@ -1,10 +1,14 @@
 // src/App.jsx
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
+import { ExamProvider } from './context/ExamContext';
 import { ToastProvider } from './components/common/Toast';
 import Topbar from './components/layout/Topbar';
 import Sidebar from './components/layout/Sidebar';
+import ChatBot from './components/rag/ChatBot';
+import ForcePasswordChange from './components/auth/ForcePasswordChange';
 import Login from './pages/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import Faculty from './components/faculty/Faculty';
@@ -13,64 +17,63 @@ import Schedule from './components/schedule/Schedule';
 import Leaves from './components/leaves/Leaves';
 import Allocate from './components/allocate/Allocate';
 import Seating from './components/seating/Seating';
+import ExamEvents from './components/exam/ExamEvents';
+import RagPipeline from './components/rag/RagPipeline';
 import StudentDashboard from './pages/StudentDashboard';
 import MySeat from './pages/MySeat';
 
-// ── Route Guards ───────────────────────────────────────────────────
+// ── Route guard ───────────────────────────────────────────────────
 function RequireAuth({ allowedRoles }) {
   const { user, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center font-mono text-[#7d8590]">
-        Loading...
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-[#0d1117] flex items-center justify-center font-mono text-[#7d8590]">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (user.mustChangePassword) return <ForcePasswordChange />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={user.role === 'student' ? '/student' : '/'} replace />;
   }
   return <Outlet />;
 }
 
-// ── Shared App Layout ──────────────────────────────────────────────
+// ── App layout with chatbot ───────────────────────────────────────
 function AppLayout() {
+  const { isAdmin } = useAuth();
+  const [chatOpen, setChatOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
-      <Topbar />
+      <Topbar onToggleChat={isAdmin ? () => setChatOpen(o => !o) : undefined} />
       <div className="flex" style={{ minHeight: 'calc(100vh - 56px)' }}>
         <Sidebar />
         <div className="flex-1 p-7 overflow-y-auto min-h-0">
           <Outlet />
         </div>
       </div>
+      {isAdmin && <ChatBot isOpen={chatOpen} onClose={() => setChatOpen(false)} />}
     </div>
   );
 }
 
-// ── Root Routes ────────────────────────────────────────────────────
+// ── Routes ─────────────────────────────────────────────────────────
 function AppRoutes() {
   const { user } = useAuth();
   const defaultRedirect = user?.role === 'student' ? '/student' : '/';
 
   return (
     <Routes>
-      {/* Public */}
-      <Route
-        path="/login"
-        element={user ? <Navigate to={defaultRedirect} replace /> : <Login />}
-      />
+      <Route path="/login" element={user ? <Navigate to={defaultRedirect} replace /> : <Login />} />
 
-      {/* Admin / Faculty */}
+      {/* Admin */}
       <Route element={<RequireAuth allowedRoles={['admin']} />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/events" element={<ExamEvents />} />
           <Route path="/faculty" element={<Faculty />} />
           <Route path="/rooms" element={<RoomConfig />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/leaves" element={<Leaves />} />
           <Route path="/allocate" element={<Allocate />} />
           <Route path="/seating" element={<Seating />} />
+          <Route path="/rag" element={<RagPipeline />} />
         </Route>
       </Route>
 
@@ -83,28 +86,27 @@ function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Catch-all */}
       <Route path="*" element={<Navigate to={user ? defaultRedirect : '/login'} replace />} />
     </Routes>
   );
 }
 
-// ── Root App ───────────────────────────────────────────────────────
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <AppProvider>
-          <ToastProvider>
-            <AppRoutesWrapper />
-          </ToastProvider>
+          <ExamProvider>
+            <ToastProvider>
+              <AppRoutesWrapper />
+            </ToastProvider>
+          </ExamProvider>
         </AppProvider>
       </AuthProvider>
     </BrowserRouter>
   );
 }
 
-// Wrapper so AppRoutes can call useAuth inside AuthProvider
 function AppRoutesWrapper() {
   return <AppRoutes />;
 }
