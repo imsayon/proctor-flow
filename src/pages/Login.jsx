@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Loader2, ArrowRight } from 'lucide-react';
 
 const DEMO_CREDS = [
   { label: 'Admin / HOD', email: 'admin@proctorflow.edu', password: 'admin123', color: '#f0a500' },
@@ -77,8 +78,8 @@ export default function Login() {
                 className="w-full bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2.5 font-mono text-sm outline-none focus:border-[#f0a500]" placeholder="••••••••" required />
             </div>
             {error && <div className="font-mono text-xs text-[#f85149] bg-[#f85149]/10 px-3 py-2 border border-[#f85149]/30">{error}</div>}
-            <button type="submit" disabled={loading} className="btn btn-primary w-full justify-center mt-1">
-              {loading ? '⟳ Signing in...' : '→ Sign In'}
+            <button type="submit" disabled={loading} className="btn border border-[#f0a500] text-[#f0a500] hover:bg-[#f0a500]/10 w-full justify-center mt-1 flex items-center gap-2 transition-colors">
+              {loading ? <><Loader2 size={14} className="animate-spin" /> Signing in...</> : <>Sign In <ArrowRight size={14} /></>}
             </button>
           </form>
         </div>

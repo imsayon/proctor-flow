@@ -18,9 +18,10 @@ import Leaves from './components/leaves/Leaves';
 import Allocate from './components/allocate/Allocate';
 import Seating from './components/seating/Seating';
 import ExamEvents from './components/exam/ExamEvents';
-import RagPipeline from './components/rag/RagPipeline';
+import RetrieveInfo from './components/rag/RagPipeline';
 import StudentDashboard from './pages/StudentDashboard';
 import MySeat from './pages/MySeat';
+import Profile from './pages/Profile';
 
 // ── Route guard ───────────────────────────────────────────────────
 function RequireAuth({ allowedRoles }) {
@@ -73,7 +74,8 @@ function AppRoutes() {
           <Route path="/leaves" element={<Leaves />} />
           <Route path="/allocate" element={<Allocate />} />
           <Route path="/seating" element={<Seating />} />
-          <Route path="/rag" element={<RagPipeline />} />
+          <Route path="/retrieve" element={<RetrieveInfo />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
       </Route>
 

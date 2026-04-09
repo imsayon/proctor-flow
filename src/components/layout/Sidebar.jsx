@@ -3,22 +3,23 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useExam, STATE_COLORS } from '../../context/ExamContext';
+import { LayoutDashboard, Calendar, Users, Landmark, ClipboardList, PenLine, Zap, Grid, FileSearch } from 'lucide-react';
 
 const adminLinks = [
-  { to: '/', label: 'Dashboard', icon: '◆' },
-  { to: '/events', label: 'Exam Events', icon: '📅' },
-  { to: '/faculty', label: 'Faculty', icon: '👤' },
-  { to: '/rooms', label: 'Rooms', icon: '🏛' },
-  { to: '/schedule', label: 'Schedule', icon: '📋' },
-  { to: '/leaves', label: 'Leaves', icon: '📝' },
-  { to: '/allocate', label: 'Allocate', icon: '⚡' },
-  { to: '/seating', label: 'Seating', icon: '▦' },
-  { to: '/rag', label: 'RAG Import', icon: '📄' },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/events', label: 'Exam Events', icon: Calendar },
+  { to: '/faculty', label: 'Faculty', icon: Users },
+  { to: '/rooms', label: 'Rooms', icon: Landmark },
+  { to: '/schedule', label: 'Schedule', icon: ClipboardList },
+  { to: '/leaves', label: 'Leaves', icon: PenLine },
+  { to: '/allocate', label: 'Allocate', icon: Zap },
+  { to: '/seating', label: 'Seating', icon: Grid },
+  { to: '/retrieve', label: 'Retrieve Info', icon: FileSearch },
 ];
 
 const studentLinks = [
-  { to: '/student', label: 'My Dashboard', icon: '◆' },
-  { to: '/student/seat', label: 'My Seat', icon: '▦' },
+  { to: '/student', label: 'My Dashboard', icon: LayoutDashboard },
+  { to: '/student/seat', label: 'My Seat', icon: Grid },
 ];
 
 export default function Sidebar() {
@@ -50,20 +51,23 @@ export default function Sidebar() {
       )}
 
       <nav className="flex-1 py-2 overflow-y-auto">
-        {links.map(link => (
-          <NavLink key={link.to} to={link.to} end={link.to === '/' || link.to === '/student'}
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 px-5 py-2.5 text-xs transition-colors border-l-2 ${
-                isActive ? 'border-[#f0a500] bg-[#f0a500]/5 text-[#e6edf3]' : 'border-transparent text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#1c2128]'
-              }`
-            }>
-            <span className="text-sm">{link.icon}</span>
-            <span className="flex-1">{link.label}</span>
-            {badges[link.to] > 0 && (
-              <span className="font-mono text-[9px] text-[#7d8590] bg-[#30363d] px-1.5 py-0.5">{badges[link.to]}</span>
-            )}
-          </NavLink>
-        ))}
+        {links.map(link => {
+          const Icon = link.icon;
+          return (
+            <NavLink key={link.to} to={link.to} end={link.to === '/' || link.to === '/student'}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-5 py-2.5 text-xs transition-colors border-l-2 ${
+                  isActive ? 'border-[#f0a500] bg-[#f0a500]/5 text-[#e6edf3]' : 'border-transparent text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#1c2128]'
+                }`
+              }>
+              <Icon size={16} />
+              <span className="flex-1">{link.label}</span>
+              {badges[link.to] > 0 && (
+                <span className="font-mono text-[9px] text-[#7d8590] bg-[#30363d] px-1.5 py-0.5">{badges[link.to]}</span>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* Footer */}

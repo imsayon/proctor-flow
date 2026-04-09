@@ -1,14 +1,24 @@
 // src/lib/gemini.js — Gemini 1.5 Flash integration for RAG pipeline + chatbot
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 let genAI = null;
 let model = null;
+let currentKey = null;
+let currentModelName = null;
 
-function getModel() {
-  if (!model && API_KEY) {
-    genAI = new GoogleGenerativeAI(API_KEY);
-    model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+// Allow dynamic reconfiguration from UI
+export function getModel() {
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  const storedKey = localStorage.getItem('proctorflow_gemini_key') || envKey;
+  const storedModel = localStorage.getItem('proctorflow_gemini_model') || 'gemini-1.5-flash';
+
+  if (!storedKey) return null;
+
+  if (!model || currentKey !== storedKey || currentModelName !== storedModel) {
+    currentKey = storedKey;
+    currentModelName = storedModel;
+    genAI = new GoogleGenerativeAI(storedKey);
+    model = genAI.getGenerativeModel({ model: storedModel });
   }
   return model;
 }
@@ -16,14 +26,14 @@ function getModel() {
 // ─── Entity Extraction (RAG Step 2) ──────────────────────────────────
 export async function extractEntities(textContent, fileType = 'csv') {
   const m = getModel();
-  if (!m) throw new Error('Gemini API key not configured');
+  if (!m) throw new Error('Gemini API key not configured. Please set it in the AI Assistant settings.');
 
   const prompt = `You are a data extraction engine for an exam management system called ProctorFlow.
 Parse the following ${fileType.toUpperCase()} content and extract structured entities.
 
 Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
 {
-  "students": [{"usn": "string", "name": "string", "branch": "string", "semester": number, "email": "string"}],
+  "students": [{"usn": "string", "name": "string", "branch": "string", "semester": 1, "email": "string"}],
   "faculty": [{"name": "string", "designation": "string", "email": "string", "employeeId": "string"}],
   "timetable": [{"date": "YYYY-MM-DD", "slot": "FN|AN|EV", "startTime": "HH:MM", "endTime": "HH:MM", "subject": "string", "branch": "string"}]
 }
@@ -37,34 +47,32 @@ Content to parse:
 ${textContent.slice(0, 30000)}
 ---`;
 
-  const result = await m.generateContent(prompt);
-  const text = result.response.text().trim();
-  
-  // Strip markdown code fences if present
-  const cleaned = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-  
   try {
+    const result = await m.generateContent(prompt);
+    const text = result.response.text().trim();
+    const cleaned = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
     return JSON.parse(cleaned);
   } catch (e) {
-    console.error('[Gemini] Parse failed:', text);
-    throw new Error('Failed to parse Gemini response as JSON');
+    console.error('[Gemini] Extraction failed:', e);
+    throw new Error(e.message || 'Failed to parse Gemini response');
   }
 }
 
 // ─── Contextual Chat (Chatbot) ───────────────────────────────────────
 export async function chatWithContext(history, message, appState) {
   const m = getModel();
-  if (!m) throw new Error('Gemini API key not configured');
+  if (!m) throw new Error('Gemini API key not configured. Please set it in Settings.');
 
   const stateSnapshot = JSON.stringify({
     totalFaculty: appState.faculty?.length || 0,
     totalRooms: appState.rooms?.length || 0,
     totalSessions: appState.sessions?.length || 0,
+    totalStudents: appState.students?.length || 0,
     totalAllocations: appState.allocations?.length || 0,
     facultyNames: (appState.faculty || []).map(f => f.name).slice(0, 20),
     roomNames: (appState.rooms || []).map(r => r.name),
     sessionSubjects: (appState.sessions || []).map(s => `${s.subject} (${s.date} ${s.slot})`).slice(0, 20),
-    leaveRequests: (appState.leaveRequests || appState.leaves || []).map(l => `${l.facultyName}: ${l.from} to ${l.to} (${l.status})`),
+    leaveRequests: (appState.leaves || []).map(l => `${l.facultyName}: ${l.from} to ${l.to} (${l.status})`),
     allocations: (appState.allocations || []).map(a => `Session ${a.sessionId}: ${a.f1Name || 'TBD'} + ${a.f2Name || 'TBD'} (${a.status})`).slice(0, 20),
   }, null, 0);
 
@@ -114,7 +122,8 @@ export async function parseFileToText(file) {
 
   if (ext === 'pdf') {
     const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    // FIXED WORKER URL to unpkg which serves .mjs properly
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
     const pages = [];

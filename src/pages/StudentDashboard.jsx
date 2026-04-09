@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { useExam, STATE_COLORS } from '../context/ExamContext';
 import { useNavigate } from 'react-router-dom';
+import { ChevronDown, ChevronUp, Grid, Lock, CheckCircle2, Clock, Hand } from 'lucide-react';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -30,7 +31,7 @@ export default function StudentDashboard() {
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#3fb950]" />
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            <div className="text-xl font-semibold">Welcome, {user?.name?.split(' ')[0]} 👋</div>
+            <div className="text-xl font-semibold flex items-center gap-2">Welcome, {user?.name?.split(' ')[0]} <Hand size={18} className="text-[#f0a500]" /></div>
             <div className="font-mono text-xs text-[#7d8590] mt-1">{user?.rollNo} · {user?.branch} Branch · ISE Dept · DSCE</div>
           </div>
           <div className="text-right">
@@ -63,7 +64,7 @@ export default function StudentDashboard() {
           onClick={() => isPublished && navigate('/student/seat')}>
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#3fb950]" />
           <div className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#7d8590] mb-2">My Seat</div>
-          <div className="text-3xl font-bold">{isPublished ? '→' : '🔒'}</div>
+          <div className="text-3xl font-bold flex items-center">{isPublished ? <Grid size={28} /> : <Lock size={28} className="text-[#7d8590]" />}</div>
           <div className="text-[11px] text-[#7d8590] mt-1">{isPublished ? nextRoom?.name || 'View seat' : 'Available after publish'}</div>
         </div>
         <div className="bg-[#161b22] border border-[#30363d] p-4 relative overflow-hidden">
@@ -108,9 +109,9 @@ export default function StudentDashboard() {
                         <td className="px-4 py-[10px] text-sm font-medium">{s.subject}</td>
                         <td className="px-4 py-[10px] font-mono text-xs">{room?.name || '—'}</td>
                         <td className="px-4 py-[10px]">
-                          <span className={`pill ${alloc ? 'pill-green' : 'pill-yellow'}`}>{alloc ? '✓ Ready' : '⏳'}</span>
+                          <span className={`pill flex items-center w-max gap-1.5 ${alloc ? 'pill-green' : 'pill-yellow'}`}>{alloc ? <><CheckCircle2 size={12}/> Ready</> : <><Clock size={12}/> Pending</>}</span>
                         </td>
-                        <td className="px-4 py-[10px] text-[#7d8590] text-xs font-mono">{isExpanded ? '▲' : '▼'}</td>
+                        <td className="px-4 py-[10px] text-[#7d8590] text-xs font-mono">{isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}</td>
                       </tr>
                       {isExpanded && (
                         <tr key={`${s.id}-d`} className="border-b border-[#30363d] bg-[#0d1117]">
@@ -123,7 +124,7 @@ export default function StudentDashboard() {
                                 <>
                                   <div><div className="font-mono text-[9px] text-[#7d8590] uppercase mb-1">Invigilators</div><div className="text-xs">{alloc.f1Name}, {alloc.f2Name}</div></div>
                                   {isPublished && (
-                                    <button onClick={e => { e.stopPropagation(); navigate('/student/seat'); }} className="btn btn-primary text-[10px] !py-1.5 w-fit mt-2">▦ View My Seat</button>
+                                    <button onClick={e => { e.stopPropagation(); navigate('/student/seat'); }} className="btn btn-primary text-[10px] !py-1.5 w-fit mt-2 flex items-center gap-1.5"><Grid size={12}/> View My Seat</button>
                                   )}
                                 </>
                               ) : (

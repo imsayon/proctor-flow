@@ -1,6 +1,7 @@
 // src/components/layout/Topbar.jsx
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Bot, LogOut, User as UserIcon } from 'lucide-react';
 
 export default function Topbar({ onToggleChat }) {
   const { user, logout, isAdmin } = useAuth();
@@ -22,27 +23,28 @@ export default function Topbar({ onToggleChat }) {
         </div>
         <span className="font-mono text-[9px] text-[#484f58]">v3</span>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-6">
         {/* AI Chat toggle (admin only) */}
         {isAdmin && onToggleChat && (
-          <button onClick={onToggleChat} className="flex items-center gap-1.5 font-mono text-[10px] text-[#7d8590] hover:text-[#e6edf3] transition-colors">
-            <span className="w-1.5 h-1.5 bg-[#3fb950] rounded-full animate-pulse" />
-            AI Chat
+          <button onClick={onToggleChat} className="flex items-center gap-1.5 font-sans text-xs font-medium text-[#7d8590] hover:text-[#3fb950] transition-colors border border-transparent hover:border-[#3fb950]/30 hover:bg-[#3fb950]/10 px-3 py-1.5 rounded-full relative">
+            <span className="absolute top-1 right-2 w-1.5 h-1.5 bg-[#3fb950] rounded-full animate-pulse" />
+            <Bot size={16} className="text-[#3fb950]" />
+            AI Assistant
           </button>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 border-l border-[#30363d] pl-4">
           <div className="text-right">
-            <div className="text-xs font-medium">{user?.name}</div>
+            <div className="text-xs font-semibold hover:text-[#e6edf3] cursor-pointer" onClick={() => isAdmin && navigate('/profile')}>{user?.name}</div>
             <div className="font-mono text-[9px]" style={{ color: roleColor }}>{roleLabel}</div>
           </div>
-          <div className="w-7 h-7 border flex items-center justify-center font-mono text-[10px] font-semibold"
+          <button onClick={() => isAdmin && navigate('/profile')} className="w-8 h-8 border rounded flex items-center justify-center font-mono text-[10px] font-semibold hover:bg-[#1c2128] transition-colors"
             style={{ borderColor: roleColor, color: roleColor }}>
-            {user?.name?.[0] || '?'}
-          </div>
+            <UserIcon size={14} />
+          </button>
+          <button onClick={handleLogout} className="flex items-center gap-1 font-mono text-[10px] text-[#7d8590] hover:text-[#f85149] transition-colors ml-2">
+            <LogOut size={14} />
+          </button>
         </div>
-        <button onClick={handleLogout} className="font-mono text-[10px] text-[#7d8590] hover:text-[#f85149] transition-colors">
-          Logout
-        </button>
       </div>
     </div>
   );

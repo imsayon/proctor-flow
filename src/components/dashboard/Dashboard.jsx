@@ -2,6 +2,7 @@
 import { useApp } from '../../context/AppContext';
 import { useExam, EXAM_STATES, STATE_COLORS } from '../../context/ExamContext';
 import { useNavigate } from 'react-router-dom';
+import { Calendar, Zap, FileSearch, Grid } from 'lucide-react';
 
 export default function Dashboard() {
   const { state } = useApp();
@@ -115,10 +116,10 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => nav('/events')} className="btn btn-outline text-xs">📅 Exam Events</button>
-        <button onClick={() => nav('/allocate')} className="btn btn-outline text-xs">⚡ Run Allocation</button>
-        <button onClick={() => nav('/rag')} className="btn btn-outline text-xs">📄 RAG Import</button>
-        <button onClick={() => nav('/seating')} className="btn btn-outline text-xs">▦ Seating</button>
+        <button onClick={() => nav('/events')} className="btn btn-outline text-xs flex items-center gap-1.5"><Calendar size={14}/> Exam Events</button>
+        <button onClick={() => nav('/allocate')} className="btn btn-outline text-xs flex items-center gap-1.5"><Zap size={14}/> Run Allocation</button>
+        <button onClick={() => nav('/retrieve')} className="btn btn-outline text-xs flex items-center gap-1.5"><FileSearch size={14}/> Retrieve Info</button>
+        <button onClick={() => nav('/seating')} className="btn btn-outline text-xs flex items-center gap-1.5"><Grid size={14}/> Seating</button>
       </div>
     </div>
   );

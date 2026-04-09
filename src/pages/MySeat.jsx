@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useExam } from '../context/ExamContext';
 import { generateSeating, getActiveCoords } from '../utils/algorithm';
+import { Hourglass } from 'lucide-react';
 
 const BRANCH_CONFIG = {
   ISE: { border: 'border-[#1f6feb]/50', bg: 'bg-[#1f6feb]/10', text: 'text-[#58a6ff]', hlBorder: 'border-[#58a6ff]', hlBg: 'bg-[#1f6feb]/30' },
@@ -56,8 +57,8 @@ export default function MySeat() {
     return (
       <div>
         <div className="text-[22px] font-semibold tracking-tight mb-7">My Seat</div>
-        <div className="bg-[#161b22] border border-[#30363d] p-12 text-center">
-          <div className="text-[#f0a500] text-2xl mb-3">⏳</div>
+        <div className="bg-[#161b22] border border-[#30363d] p-12 text-center text-[#f0a500]">
+          <Hourglass size={32} className="mx-auto mb-3" />
           <div className="text-[#e6edf3] font-semibold mb-2">Allocation Pending</div>
           <div className="text-[#7d8590] font-mono text-sm">Seat allocation has not been completed yet.</div>
         </div>
