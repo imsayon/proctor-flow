@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../common/Toast';
-import { parseFileToText, extractEntities } from '../../lib/gemini';
+import { parseFileToText, extractEntities } from '../../lib/llm';
 import { FileUp, Zap, CheckCircle2, RotateCcw, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 
 const STEPS = ['Upload', 'Extract', 'Review', 'Commit'];

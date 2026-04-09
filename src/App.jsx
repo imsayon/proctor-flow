@@ -22,6 +22,8 @@ import RetrieveInfo from './components/rag/RagPipeline';
 import StudentDashboard from './pages/StudentDashboard';
 import MySeat from './pages/MySeat';
 import Profile from './pages/Profile';
+import FacultyPortal from './pages/FacultyPortal';
+import StudentsList from './pages/StudentsList';
 
 // ── Route guard ───────────────────────────────────────────────────
 function RequireAuth({ allowedRoles }) {
@@ -30,7 +32,7 @@ function RequireAuth({ allowedRoles }) {
   if (!user) return <Navigate to="/login" replace />;
   if (user.mustChangePassword) return <ForcePasswordChange />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to={user.role === 'student' ? '/student' : '/'} replace />;
+    return <Navigate to={user.role === 'student' ? '/student' : user.role === 'faculty' ? '/faculty-portal' : '/'} replace />;
   }
   return <Outlet />;
 }
@@ -57,7 +59,7 @@ function AppLayout() {
 // ── Routes ─────────────────────────────────────────────────────────
 function AppRoutes() {
   const { user } = useAuth();
-  const defaultRedirect = user?.role === 'student' ? '/student' : '/';
+  const defaultRedirect = user?.role === 'student' ? '/student' : user?.role === 'faculty' ? '/faculty-portal' : '/';
 
   return (
     <Routes>
@@ -76,6 +78,14 @@ function AppRoutes() {
           <Route path="/seating" element={<Seating />} />
           <Route path="/retrieve" element={<RetrieveInfo />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/students" element={<StudentsList />} />
+        </Route>
+      </Route>
+
+      {/* Faculty */}
+      <Route element={<RequireAuth allowedRoles={['faculty']} />}>
+        <Route element={<AppLayout />}>
+          <Route path="/faculty-portal" element={<FacultyPortal />} />
         </Route>
       </Route>
 

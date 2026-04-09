@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../components/common/Toast';
-import { User, Key, Building2, Search, CheckCircle2, AlertTriangle, Fingerprint } from 'lucide-react';
+import { User, Key, Building2, Search, CheckCircle2, AlertTriangle, Fingerprint, Bot, Radio } from 'lucide-react';
+import { identifyProvider } from '../lib/llm';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -13,6 +14,12 @@ export default function Profile() {
   const [profileForm, setProfileForm] = useState({ name: user?.name || '' });
   const [pwdForm, setPwdForm] = useState({ current: '', newPwd: '', confirm: '' });
   const [search, setSearch] = useState('');
+  
+  const [apiKey, setApiKey] = useState(localStorage.getItem('proctorflow_llm_key') || '');
+  const [modelName, setModelName] = useState(localStorage.getItem('proctorflow_llm_model') || '');
+  const [provider, setProvider] = useState(null);
+  const [models, setModels] = useState([]);
+  const [isFetching, setIsFetching] = useState(false);
 
   const students = state.students || [];
   const filteredStudents = students.filter(s => 
@@ -41,6 +48,41 @@ export default function Profile() {
     // In a real app with Firebase Auth: updatePassword(auth.currentUser, pwdForm.newPwd)
     toast('Password changed successfully (simulated)', 'success');
     setPwdForm({ current: '', newPwd: '', confirm: '' });
+  };
+
+  const handleFetchModels = async () => {
+    if (!apiKey.trim()) return;
+    setIsFetching(true);
+    try {
+      const p = identifyProvider(apiKey.trim());
+      if (!p) throw new Error("Unknown provider API key format.");
+      setProvider(p);
+      
+      const availableModels = await p.fetchModels(apiKey.trim());
+      setModels(availableModels);
+      if (availableModels.length > 0 && !availableModels.includes(modelName)) {
+        setModelName(availableModels[0]);
+      }
+      toast(`Successfully linked to ${p.name}!`, 'success');
+    } catch (err) {
+      toast(err.message, 'warn');
+      setProvider(null);
+      setModels([]);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const handleAISave = (e) => {
+    e.preventDefault();
+    if (!provider || !modelName) {
+      toast('Please enter an API key and fetch models first.', 'warn');
+      return;
+    }
+    localStorage.setItem('proctorflow_llm_key', apiKey);
+    localStorage.setItem('proctorflow_llm_provider', provider.id);
+    localStorage.setItem('proctorflow_llm_model', modelName);
+    toast('Universal AI Agent settings updated', 'success');
   };
 
   return (
@@ -106,6 +148,50 @@ export default function Profile() {
               <button type="submit" disabled={!pwdForm.current || !pwdForm.newPwd || !pwdForm.confirm} 
                 className="btn border border-[#30363d] hover:border-[#f85149] hover:text-[#f85149] w-full justify-center text-xs py-2 mt-2 transition-colors">
                 Update Password
+              </button>
+            </form>
+          </div>
+
+          {/* AI Settings Card */}
+          <div className="bg-[#161b22] border border-[#30363d] rounded-md overflow-hidden">
+            <div className="p-5 border-b border-[#30363d] bg-[#1c2128] flex items-center gap-3">
+              <Bot size={18} className="text-[#3fb950]" />
+              <div className="font-semibold text-sm">Personal AI Agent</div>
+            </div>
+            <form onSubmit={handleAISave} className="p-5 space-y-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-mono text-[#7d8590] uppercase tracking-wider">Universal API Key</label>
+                <div className="flex gap-2">
+                  <input type="password" value={apiKey} 
+                    onChange={e => { setApiKey(e.target.value); setProvider(null); setModels([]); }} 
+                    placeholder="sk-... or AIza..."
+                    className="flex-1 bg-[#0d1117] border border-[#30363d] px-3 py-2 text-sm text-[#e6edf3] outline-none focus:border-[#3fb950] transition-colors" />
+                  <button type="button" onClick={handleFetchModels} disabled={isFetching || !apiKey.trim()} 
+                    className="bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]/30 px-3 py-2 hover:bg-[#3fb950]/20 transition-colors disabled:opacity-50">
+                    <Radio size={16} className={isFetching ? 'animate-pulse' : ''} />
+                  </button>
+                </div>
+              </div>
+
+              {provider && models.length > 0 && (
+                <div className="space-y-4 animate-fadein">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono bg-[#3fb950]/15 text-[#3fb950] px-2 py-0.5 rounded border border-[#3fb950]/30">{provider.name} Detected</span>
+                    <span className="text-xs font-mono text-[#7d8590]">{models.length} models available</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-mono text-[#7d8590] uppercase tracking-wider">Model Context</label>
+                    <select value={modelName} onChange={e => setModelName(e.target.value)}
+                      className="bg-[#0d1117] border border-[#30363d] px-3 py-2 text-sm text-[#e6edf3] outline-none focus:border-[#3fb950] transition-colors">
+                      {models.map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+              <button type="submit" disabled={!provider || !modelName} className="btn bg-[#3fb950]/10 border border-[#3fb950]/30 hover:bg-[#3fb950]/20 text-[#3fb950] w-full justify-center transition-colors disabled:opacity-50">
+                Save Agent Configuration
               </button>
             </form>
           </div>

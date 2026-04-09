@@ -11,6 +11,7 @@ export const useAuth = () => useContext(AuthContext);
 // Demo accounts (fallback when Firebase Auth isn't configured)
 const DEMO_ACCOUNTS = {
   'admin@proctorflow.edu': { password: 'admin123', role: 'admin', name: 'Dr. K. Ramesh (HOD)', dept: 'ISE', deptId: 'ise', employeeId: 'HOD001' },
+  'faculty@proctorflow.edu': { password: 'faculty123', role: 'faculty', name: 'Dr. Emily Chen', dept: 'ISE', deptId: 'ise', employeeId: 'FAC001' },
   'student@proctorflow.edu': { password: 'student123', role: 'student', name: 'Aarav Sharma', rollNo: '1DS22IS001', branch: 'ISE', deptId: 'ise', usn: '1DS22IS001' },
 };
 

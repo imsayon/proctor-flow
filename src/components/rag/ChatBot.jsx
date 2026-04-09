@@ -1,9 +1,9 @@
 // src/components/rag/ChatBot.jsx
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { chatWithContext } from '../../lib/gemini';
+import { chatWithContext } from '../../lib/llm';
 import { useNavigate } from 'react-router-dom';
-import { X, Bot, Settings, Send, FileSearch, Key, Cpu } from 'lucide-react';
+import { X, Bot, Send, FileSearch } from 'lucide-react';
 
 export default function ChatBot({ isOpen, onClose }) {
   const { state } = useApp();
@@ -11,9 +11,6 @@ export default function ChatBot({ isOpen, onClose }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [apiKey, setApiKey] = useState(localStorage.getItem('proctorflow_gemini_key') || '');
-  const [modelName, setModelName] = useState(localStorage.getItem('proctorflow_gemini_model') || 'gemini-1.5-flash');
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -38,13 +35,6 @@ export default function ChatBot({ isOpen, onClose }) {
     }
   };
 
-  const handleSaveSettings = () => {
-    localStorage.setItem('proctorflow_gemini_key', apiKey);
-    localStorage.setItem('proctorflow_gemini_model', modelName);
-    setShowSettings(false);
-    setMessages([{ role: 'assistant', content: 'Settings saved! How can I help you today?' }]);
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -55,33 +45,14 @@ export default function ChatBot({ isOpen, onClose }) {
           <div className="font-semibold">ProctorFlow AI</div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setShowSettings(!showSettings)} className="text-[#7d8590] hover:text-[#e6edf3]">
-            <Settings size={16} />
-          </button>
           <button onClick={onClose} className="text-[#7d8590] hover:text-[#e6edf3]">
             <X size={18} />
           </button>
         </div>
       </div>
 
-      {showSettings ? (
-        <div className="p-5 flex-1 flex flex-col gap-4">
-          <div className="font-mono text-xs text-[#7d8590] uppercase tracking-wider mb-2">AI Settings</div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-[#7d8590] flex items-center gap-1.5"><Key size={14}/> Gemini API Key</label>
-            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="AIza..."
-              className="bg-[#0d1117] border border-[#30363d] p-2 text-sm text-[#e6edf3] outline-none focus:border-[#f0a500]" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-[#7d8590] flex items-center gap-1.5"><Cpu size={14} /> Model Context</label>
-            <input type="text" value={modelName} onChange={e => setModelName(e.target.value)} placeholder="gemini-1.5-flash"
-              className="bg-[#0d1117] border border-[#30363d] p-2 text-sm text-[#e6edf3] outline-none focus:border-[#f0a500]" />
-          </div>
-          <button onClick={handleSaveSettings} className="btn btn-primary mt-2">Save Settings</button>
-        </div>
-      ) : (
-        <>
-          <div className="p-4 bg-[#0d1117] flex justify-center border-b border-[#30363d]">
+      <>
+        <div className="p-4 bg-[#0d1117] flex justify-center border-b border-[#30363d]">
             <button onClick={() => { onClose(); navigate('/retrieve'); }} 
               className="flex items-center gap-2 text-xs font-mono text-[#f0a500] hover:bg-[#f0a500]/10 border border-[#f0a500]/50 px-4 py-2 w-full justify-center transition-colors">
               <FileSearch size={14} />
@@ -121,8 +92,7 @@ export default function ChatBot({ isOpen, onClose }) {
               <Send size={16} />
             </button>
           </form>
-        </>
-      )}
+      </>
     </div>
   );
 }

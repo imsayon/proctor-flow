@@ -6,6 +6,7 @@ import { Loader2, ArrowRight } from 'lucide-react';
 
 const DEMO_CREDS = [
   { label: 'Admin / HOD', email: 'admin@proctorflow.edu', password: 'admin123', color: '#f0a500' },
+  { label: 'Faculty', email: 'faculty@proctorflow.edu', password: 'faculty123', color: '#1f6feb' },
   { label: 'Student', email: 'student@proctorflow.edu', password: 'student123', color: '#3fb950' },
 ];
 
@@ -24,7 +25,7 @@ export default function Login() {
     try {
       const u = await login(email, password);
       const role = u?.role || 'student';
-      navigate(role === 'student' ? '/student' : '/');
+      navigate(role === 'student' ? '/student' : role === 'faculty' ? '/faculty-portal' : '/');
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -54,7 +55,7 @@ export default function Login() {
           {/* Demo cards */}
           <div className="mb-5">
             <div className="font-mono text-[10px] text-[#7d8590] uppercase tracking-[1.5px] mb-2">Quick Login</div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {DEMO_CREDS.map(cred => (
                 <button key={cred.email} onClick={() => quickFill(cred)}
                   className="text-left p-3 border border-[#30363d] bg-[#1c2128] hover:border-[#7d8590] transition-colors"

@@ -22,7 +22,7 @@ export default function Dashboard() {
     { label: 'Sessions', value: eventSessions.length, color: '#f0a500', link: '/schedule' },
     { label: 'Allocated', value: eventAllocs.filter(a => a.status === 'assigned').length, color: '#3fb950', link: '/allocate' },
     { label: 'Leaves', value: state.leaves.filter(l => l.status === 'pending').length, color: '#f85149', link: '/leaves' },
-    { label: 'Students', value: state.students?.length || 0, color: '#58a6ff', link: '/rag' },
+    { label: 'Students', value: state.students?.length || 0, color: '#58a6ff', link: '/students' },
   ];
 
   const availableFac = state.faculty.filter(f => f.available).length;
