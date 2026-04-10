@@ -2,22 +2,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, ArrowRight, Building2, CheckCircle2, Shield } from 'lucide-react';
+import { Loader2, ArrowRight, Building2, CheckCircle2, Shield, UserPlus, KeyRound } from 'lucide-react';
 import { searchInstitutionsIN, emailDomain } from '../lib/institutions';
-import { bootstrapAdmin } from '../lib/cloudFunctions';
 
 export default function Login() {
-  const { login, authError } = useAuth();
+  const { login, signUp, requestAccess, bootstrapAdmin, authError } = useAuth();
   const navigate = useNavigate();
   const [institutionQuery, setInstitutionQuery] = useState('');
   const [institutions, setInstitutions] = useState([]);
   const [selectedInstitution, setSelectedInstitution] = useState(null);
+  const [mode, setMode] = useState('signin'); // signin | signup
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [desiredRole, setDesiredRole] = useState('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isBootstrapping, setIsBootstrapping] = useState(false);
-  const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '' });
 
   useEffect(() => {
     let cancelled = false;
@@ -51,9 +52,16 @@ export default function Login() {
     try {
       if (!selectedInstitution) throw new Error('Please select your institution');
       if (!domainOk) throw new Error('Email domain does not match the selected institution');
-      const u = await login(email, password, selectedInstitution.id);
-      const role = u?.role || 'student'; // hydrated in auth listener, but keep fallback
-      navigate(role === 'student' ? '/student' : role === 'faculty' ? '/faculty-portal' : '/');
+
+      if (mode === 'signup') {
+        await signUp(email, password, selectedInstitution.id);
+        await requestAccess({ institutionId: selectedInstitution.id, desiredRole, name });
+      } else {
+        await login(email, password, selectedInstitution.id);
+      }
+
+      // AuthContext listener will redirect via App.jsx default redirect, but keep UX snappy:
+      navigate('/');
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -65,24 +73,16 @@ export default function Login() {
     e.preventDefault();
     setError('');
     if (!selectedInstitution) { setError('Please select your institution'); return; }
-    if (!adminForm.name.trim() || !adminForm.email.trim() || !adminForm.password) {
-      setError('Please fill all admin registration fields');
-      return;
-    }
     const allowed = (selectedInstitution.domains || []).map(d => String(d).toLowerCase());
-    if (!allowed.includes(emailDomain(adminForm.email))) {
+    if (!allowed.includes(emailDomain(email))) {
       setError('Admin email domain does not match the selected institution');
       return;
     }
     setIsBootstrapping(true);
     try {
-      await bootstrapAdmin({
-        institutionId: selectedInstitution.id,
-        email: adminForm.email.trim(),
-        password: adminForm.password,
-        name: adminForm.name.trim(),
-      });
-      await login(adminForm.email.trim(), adminForm.password, selectedInstitution.id);
+      // Spark-only: admin self-signs up, then bootstraps their admin role in Firestore.
+      await signUp(email, password, selectedInstitution.id);
+      await bootstrapAdmin({ institutionId: selectedInstitution.id, name: name || 'Admin' });
       navigate('/');
     } catch (err) {
       setError(err.message || 'Admin registration failed');
@@ -139,7 +139,26 @@ export default function Login() {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setMode('signin')}
+                className={`btn justify-center text-xs border ${mode === 'signin' ? 'border-[#f0a500] text-[#f0a500] bg-[#f0a500]/10' : 'border-[#30363d] text-[#7d8590] hover:text-[#e6edf3]'}`}>
+                <KeyRound size={14} /> Sign in
+              </button>
+              <button type="button" onClick={() => setMode('signup')}
+                className={`btn justify-center text-xs border ${mode === 'signup' ? 'border-[#58a6ff] text-[#58a6ff] bg-[#58a6ff]/10' : 'border-[#30363d] text-[#7d8590] hover:text-[#e6edf3]'}`}>
+                <UserPlus size={14} /> Create account
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+              {mode === 'signup' && (
+                <div>
+                  <label className="font-mono text-[10px] uppercase tracking-[1px] text-[#7d8590] block mb-1">Full name</label>
+                  <input value={name} onChange={e => setName(e.target.value)}
+                    className="w-full bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2.5 font-mono text-sm outline-none focus:border-[#58a6ff]"
+                    placeholder="Your name" required />
+                </div>
+              )}
               <div>
                 <label className="font-mono text-[10px] uppercase tracking-[1px] text-[#7d8590] block mb-1">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)}
@@ -156,10 +175,23 @@ export default function Login() {
                   className="w-full bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2.5 font-mono text-sm outline-none focus:border-[#f0a500]"
                   placeholder="••••••••" required />
               </div>
+              {mode === 'signup' && (
+                <div>
+                  <label className="font-mono text-[10px] uppercase tracking-[1px] text-[#7d8590] block mb-1">I am a</label>
+                  <select value={desiredRole} onChange={e => setDesiredRole(e.target.value)}
+                    className="w-full bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2.5 font-mono text-sm outline-none focus:border-[#58a6ff]">
+                    <option value="student">Student</option>
+                    <option value="faculty">Faculty</option>
+                  </select>
+                  <div className="font-mono text-[10px] text-[#7d8590] mt-1">
+                    After creating your account, an admin must approve access.
+                  </div>
+                </div>
+              )}
               {error && <div className="font-mono text-xs text-[#f85149] bg-[#f85149]/10 px-3 py-2 border border-[#f85149]/30 rounded">{error}</div>}
               <button type="submit" disabled={loading || !selectedInstitution || !domainOk}
                 className="btn border border-[#f0a500] text-[#f0a500] hover:bg-[#f0a500]/10 w-full justify-center mt-1 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                {loading ? <><Loader2 size={14} className="animate-spin" /> Signing in...</> : <>Sign In <ArrowRight size={14} /></>}
+                {loading ? <><Loader2 size={14} className="animate-spin" /> Working...</> : <>{mode === 'signup' ? 'Create account & request access' : 'Sign In'} <ArrowRight size={14} /></>}
               </button>
             </form>
 
@@ -170,18 +202,12 @@ export default function Login() {
                   No admin is registered for <span className="text-[#e6edf3]">{selectedInstitution.name}</span>. Register the first admin to onboard your institution.
                 </div>
                 <form onSubmit={handleBootstrapAdmin} className="grid grid-cols-1 gap-3">
-                  <input value={adminForm.name} onChange={e => setAdminForm(f => ({ ...f, name: e.target.value }))}
-                    className="w-full bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2.5 font-mono text-sm outline-none focus:border-[#58a6ff]"
-                    placeholder="Admin full name" />
-                  <input type="email" value={adminForm.email} onChange={e => setAdminForm(f => ({ ...f, email: e.target.value }))}
-                    className="w-full bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2.5 font-mono text-sm outline-none focus:border-[#58a6ff]"
-                    placeholder={`admin@${selectedInstitution.domains?.[0] || 'institution.edu.in'}`} />
-                  <input type="password" value={adminForm.password} onChange={e => setAdminForm(f => ({ ...f, password: e.target.value }))}
-                    className="w-full bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2.5 font-mono text-sm outline-none focus:border-[#58a6ff]"
-                    placeholder="Set admin password (min 8 chars)" />
+                  <div className="text-[11px] text-[#7d8590] font-mono">
+                    Spark-only mode: the first admin creates their own Auth account, then bootstraps admin access.
+                  </div>
                   <button type="submit" disabled={isBootstrapping}
                     className="btn border border-[#58a6ff] text-[#58a6ff] hover:bg-[#58a6ff]/10 w-full justify-center flex items-center gap-2 transition-colors disabled:opacity-50">
-                    {isBootstrapping ? <><Loader2 size={14} className="animate-spin" /> Creating admin...</> : <>Create Admin <ArrowRight size={14} /></>}
+                    {isBootstrapping ? <><Loader2 size={14} className="animate-spin" /> Bootstrapping admin...</> : <>Bootstrap Admin <ArrowRight size={14} /></>}
                   </button>
                 </form>
               </div>

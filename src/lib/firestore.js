@@ -33,6 +33,19 @@ export async function upsertUser(uid, data, institutionId) {
   return setDoc(doc(db, 'institutions', institutionId, 'users', uid), data, { merge: true });
 }
 
+export async function upsertInstitution(institutionId, data) {
+  if (IS_DEMO_MODE) return;
+  if (!institutionId) throw new Error('institutionId is required');
+  return setDoc(doc(db, 'institutions', institutionId), data, { merge: true });
+}
+
+export async function upsertJoinRequest(institutionId, uid, data) {
+  if (IS_DEMO_MODE) return;
+  if (!institutionId) throw new Error('institutionId is required');
+  if (!uid) throw new Error('uid is required');
+  return setDoc(doc(db, 'institutions', institutionId, 'join_requests', uid), data, { merge: true });
+}
+
 // ─── Generic CRUD ────────────────────────────────────────────────────
 export async function getAll(institutionId, colName) {
   const snap = await getDocs(col(institutionId, colName));

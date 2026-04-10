@@ -6,41 +6,64 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function tokenInstitutionId() {
-      return request.auth.token.institutionId;
-    }
-
-    function tokenRole() {
-      return request.auth.token.role;
+    function userDoc(institutionId) {
+      return get(/databases/$(database)/documents/institutions/$(institutionId)/users/$(request.auth.uid));
     }
 
     function isInstitutionMember(institutionId) {
-      return isSignedIn() && tokenInstitutionId() == institutionId;
+      return isSignedIn() && exists(/databases/$(database)/documents/institutions/$(institutionId)/users/$(request.auth.uid))
+        && userDoc(institutionId).data.status == 'active';
+    }
+
+    function role(institutionId) {
+      return userDoc(institutionId).data.role;
     }
 
     function isAdmin(institutionId) {
-      return isInstitutionMember(institutionId) && tokenRole() == 'admin';
+      return isInstitutionMember(institutionId) && role(institutionId) == 'admin';
     }
 
     function isFaculty(institutionId) {
-      return isInstitutionMember(institutionId) && tokenRole() == 'faculty';
+      return isInstitutionMember(institutionId) && role(institutionId) == 'faculty';
     }
 
     function isStudent(institutionId) {
-      return isInstitutionMember(institutionId) && tokenRole() == 'student';
+      return isInstitutionMember(institutionId) && role(institutionId) == 'student';
     }
 
     // Institution directory: public read for picker UI (no auth required).
-    // Writes are done via Admin SDK (Cloud Functions) only.
     match /institutions/{institutionId} {
       allow read: if true;
-      allow write: if false;
+      // Spark-only: allow one-time admin bootstrapping by updating hasAdmin/adminUid.
+      allow create: if false;
+      allow update: if isSignedIn()
+        && resource.data.hasAdmin != true
+        && request.resource.data.hasAdmin == true
+        && request.resource.data.adminUid == request.auth.uid;
+      allow delete: if false;
 
       // Users / claims mirror (per institution)
       match /users/{uid} {
-        allow read: if isAdmin(institutionId) || (isInstitutionMember(institutionId) && request.auth.uid == uid);
-        allow create, update: if isAdmin(institutionId) || (isInstitutionMember(institutionId) && request.auth.uid == uid);
+        allow read: if isAdmin(institutionId) || (isSignedIn() && request.auth.uid == uid);
+
+        // One-time bootstrap: first admin can create their own user doc as admin only if institution hasAdmin is not set.
+        allow create: if isSignedIn()
+          && request.auth.uid == uid
+          && request.resource.data.role == 'admin'
+          && request.resource.data.status == 'active'
+          && get(/databases/$(database)/documents/institutions/$(institutionId)).data.hasAdmin != true;
+
+        // Admin can create/update users. Users can update their own limited profile.
+        allow update: if (isAdmin(institutionId)) ||
+          (isSignedIn() && request.auth.uid == uid);
         allow delete: if isAdmin(institutionId);
+      }
+
+      // Join requests (user requests access; admin approves by creating /users/{uid})
+      match /join_requests/{uid} {
+        allow read: if (isAdmin(institutionId)) || (isSignedIn() && request.auth.uid == uid);
+        allow create, update: if isSignedIn() && request.auth.uid == uid;
+        allow delete: if isAdmin(institutionId) || (isSignedIn() && request.auth.uid == uid);
       }
 
       // Admin sees everything, faculty reads operational data, students see only student_views.

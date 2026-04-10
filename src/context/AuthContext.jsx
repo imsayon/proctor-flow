@@ -1,18 +1,20 @@
 // src/context/AuthContext.jsx
-// Production auth: Firebase Auth + custom claims + institution-scoped user docs
+// Spark-only production auth: Firebase Auth + institution-scoped user docs (no Cloud Functions / custom claims)
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   updatePassword as fbUpdatePassword,
-  getIdTokenResult,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
-import { getUserClaims, upsertUser } from '../lib/firestore';
+import { getUserClaims, upsertInstitution, upsertJoinRequest, upsertUser } from '../lib/firestore';
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
+
+const LAST_INSTITUTION_KEY = 'pf_last_institution_id';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -33,25 +35,31 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const token = await getIdTokenResult(fbUser, true);
-        const institutionId = token?.claims?.institutionId;
-        const role = token?.claims?.role;
-
-        if (!institutionId || !role) {
+        const institutionId = sessionStorage.getItem(LAST_INSTITUTION_KEY);
+        if (!institutionId) {
           await signOut(auth);
           setUser(null);
           sessionStorage.removeItem('pf_user');
-          setAuthError('Your account is not provisioned by an institution admin.');
+          setAuthError('Select your institution and sign in again.');
           setLoading(false);
           return;
         }
 
         const claimsDoc = await getUserClaims(fbUser.uid, institutionId);
+        if (!claimsDoc || claimsDoc.status !== 'active' || !claimsDoc.role) {
+          await signOut(auth);
+          setUser(null);
+          sessionStorage.removeItem('pf_user');
+          setAuthError('Your account is not approved by the institution admin yet.');
+          setLoading(false);
+          return;
+        }
+
         const merged = {
           uid: fbUser.uid,
           email: fbUser.email,
           name: claimsDoc?.name || fbUser.displayName || fbUser.email,
-          role: claimsDoc?.role || role,
+          role: claimsDoc.role,
           institutionId,
           employeeId: claimsDoc?.employeeId,
           usn: claimsDoc?.usn,
@@ -77,19 +85,46 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password, expectedInstitutionId) => {
     setAuthError(null);
+    if (!expectedInstitutionId) throw new Error('Please select your institution');
+    sessionStorage.setItem(LAST_INSTITUTION_KEY, expectedInstitutionId);
     const cred = await signInWithEmailAndPassword(auth, email, password);
-    const token = await getIdTokenResult(cred.user, true);
-    const institutionId = token?.claims?.institutionId;
-    if (!institutionId) {
-      await signOut(auth);
-      throw new Error('Not registered by admin. Contact your institution admin.');
-    }
-    if (expectedInstitutionId && institutionId !== expectedInstitutionId) {
-      await signOut(auth);
-      throw new Error('This account belongs to a different institution.');
-    }
-    // onAuthStateChanged finalizes session hydration
     return cred.user;
+  }, []);
+
+  const signUp = useCallback(async (email, password, expectedInstitutionId) => {
+    setAuthError(null);
+    if (!expectedInstitutionId) throw new Error('Please select your institution');
+    sessionStorage.setItem(LAST_INSTITUTION_KEY, expectedInstitutionId);
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    return cred.user;
+  }, []);
+
+  const requestAccess = useCallback(async ({ institutionId, desiredRole, name }) => {
+    if (!auth.currentUser) throw new Error('Sign in first');
+    if (!institutionId) throw new Error('institutionId required');
+    const uid = auth.currentUser.uid;
+    await upsertJoinRequest(institutionId, uid, {
+      uid,
+      email: auth.currentUser.email,
+      name: name || auth.currentUser.displayName || auth.currentUser.email,
+      desiredRole,
+      status: 'pending',
+      updatedAt: new Date().toISOString(),
+    });
+  }, []);
+
+  const bootstrapAdmin = useCallback(async ({ institutionId, name }) => {
+    if (!auth.currentUser) throw new Error('Sign in first');
+    if (!institutionId) throw new Error('institutionId required');
+    const uid = auth.currentUser.uid;
+    await upsertUser(uid, {
+      role: 'admin',
+      status: 'active',
+      email: auth.currentUser.email,
+      name: name || auth.currentUser.displayName || auth.currentUser.email,
+      createdAt: new Date().toISOString(),
+    }, institutionId);
+    await upsertInstitution(institutionId, { hasAdmin: true, adminUid: uid });
   }, []);
 
   const logout = useCallback(async () => {
@@ -105,7 +140,7 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   const value = {
-    user, loading, authError, login, logout, changePassword,
+    user, loading, authError, login, signUp, requestAccess, bootstrapAdmin, logout, changePassword,
     isAdmin: user?.role === 'admin',
     isStudent: user?.role === 'student',
     isFaculty: user?.role === 'faculty',
