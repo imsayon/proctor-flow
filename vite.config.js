@@ -6,17 +6,23 @@ export default defineConfig({
 	plugins: [react(), tailwindcss()],
 	build: {
 		target: "esnext",
-		minify: "terser",
-		terserOptions: {
-			compress: {
-				drop_console: true,
-			},
-		},
+		minify: "esbuild",
 		rollupOptions: {
 			output: {
-				manualChunks: {
-					"vendor-react": ["react", "react-dom", "react-router-dom"],
-					"vendor-firebase": ["firebase"],
+				manualChunks: (id) => {
+					if (id.includes("node_modules")) {
+						if (
+							id.includes("react") ||
+							id.includes("react-dom") ||
+							id.includes("react-router")
+						) {
+							return "vendor-react"
+						}
+						if (id.includes("firebase")) {
+							return "vendor-firebase"
+						}
+						return "vendor-other"
+					}
 				},
 			},
 		},
