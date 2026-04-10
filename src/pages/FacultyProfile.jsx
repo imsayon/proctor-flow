@@ -8,30 +8,26 @@ export default function FacultyProfile() {
   const { user } = useAuth();
   const toast = useToast();
   
-  const [form, setForm] = useState({ 
-    name: user?.name || '',
-    designation: 'Assistant Professor'
-  });
+  const [name, setName] = useState('');
+  const [designation, setDesignation] = useState('Assistant Professor');
 
+  // Load data when component mounts
   useEffect(() => {
     const savedName = localStorage.getItem('faculty_name');
     const savedDesignation = localStorage.getItem('faculty_designation');
-    if (savedName || savedDesignation) {
-      setForm({
-        name: savedName || user?.name || '',
-        designation: savedDesignation || 'Assistant Professor'
-      });
-    }
-  }, [user]);
+    
+    setName(savedName || user?.name || '');
+    setDesignation(savedDesignation || 'Assistant Professor');
+  }, []);
 
   const handleSave = (e) => {
     e.preventDefault();
-    if (!form.name.trim()) {
+    if (!name.trim()) {
       toast('Please enter your name', 'warn');
       return;
     }
-    localStorage.setItem('faculty_name', form.name);
-    localStorage.setItem('faculty_designation', form.designation);
+    localStorage.setItem('faculty_name', name);
+    localStorage.setItem('faculty_designation', designation);
     toast('✓ Profile updated successfully', 'success');
   };
 
@@ -53,20 +49,19 @@ export default function FacultyProfile() {
             <label className="text-xs font-mono text-[#7d8590] uppercase tracking-wider">Full Name</label>
             <input 
               type="text"
-              value={form.name} 
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              value={name} 
+              onChange={e => setName(e.target.value)}
               className="bg-[#0d1117] border border-[#30363d] px-3 py-2.5 text-sm text-[#e6edf3] outline-none focus:border-[#f0a500] transition-colors rounded" 
               placeholder="Enter your full name"
               required
             />
-            <div className="text-[10px] text-[#7d8590] font-mono">Current: {user?.name || 'Not set'}</div>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-mono text-[#7d8590] uppercase tracking-wider">Designation</label>
             <select 
-              value={form.designation}
-              onChange={e => setForm(f => ({ ...f, designation: e.target.value }))}
+              value={designation}
+              onChange={e => setDesignation(e.target.value)}
               className="bg-[#0d1117] border border-[#30363d] px-3 py-2.5 text-sm text-[#e6edf3] outline-none focus:border-[#f0a500] transition-colors rounded"
             >
               <option value="Assistant Professor">Assistant Professor</option>
@@ -116,7 +111,7 @@ export default function FacultyProfile() {
           <div>
             <div className="font-semibold text-sm text-[#e6edf3]">Professional Summary</div>
             <div className="text-xs text-[#7d8590] mt-2 font-mono">
-              Current Designation: <span className="text-[#e6edf3]">{form.designation}</span><br/>
+              Current Designation: <span className="text-[#e6edf3]">{designation}</span><br/>
               Status: <span className="text-[#3fb950]">Active</span>
             </div>
           </div>
