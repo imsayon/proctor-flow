@@ -16,6 +16,7 @@ export default function Seating() {
   const { state } = useApp();
   const { user, isStudent } = useAuth();
   const { currentEvent } = useExam();
+  const isAdmin = user?.role === 'admin';
   const [selectedSession, setSelectedSession] = useState(null);
   const [seed, setSeed] = useState(42);
 
@@ -64,7 +65,7 @@ export default function Seating() {
               </option>
             ))}
           </select>
-          {!isStudent && <button onClick={reshuffle} className="btn btn-outline text-xs">↻ Reshuffle</button>}
+          {!isStudent && isAdmin && <button onClick={reshuffle} className="btn btn-outline text-xs">↻ Reshuffle</button>}
         </div>
       </div>
 

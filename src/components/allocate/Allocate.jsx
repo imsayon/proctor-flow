@@ -16,8 +16,9 @@ const ALGO_STEPS = [
 
 export default function Allocate() {
   const { state, dispatch } = useApp();
-  const { institutionId } = useAuth();
+  const { institutionId, user } = useAuth();
   const toast = useToast();
+  const isAdmin = user?.role === 'admin';
   const [phase, setPhase] = useState('idle'); // idle | running | done
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(-1);
@@ -208,10 +209,10 @@ export default function Allocate() {
         </div>
 
         <div className="flex gap-3">
-          <button onClick={runAllocation} disabled={phase === 'running'} className="btn btn-primary">
+          {isAdmin && <button onClick={runAllocation} disabled={phase === 'running'} className="btn btn-primary">
             {phase === 'running' ? '⟳ Running...' : '▶ Run Allocation'}
-          </button>
-          {phase !== 'idle' && (
+          </button>}
+          {phase !== 'idle' && isAdmin && (
             <button onClick={resetAllocation} className="btn btn-outline">↺ Reset</button>
           )}
         </div>

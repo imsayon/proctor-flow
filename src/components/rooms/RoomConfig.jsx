@@ -1,5 +1,6 @@
 // src/components/rooms/RoomConfig.jsx
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../common/Toast';
 import Modal from '../common/Modal';
@@ -14,8 +15,10 @@ const PRESETS = [
 ];
 
 export default function RoomConfig() {
+  const { user } = useAuth();
   const { state, dispatch } = useApp();
   const toast = useToast();
+  const isAdmin = user?.role === 'admin';
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name: '', building: '', rows: 6, cols: 7 });
@@ -73,7 +76,7 @@ export default function RoomConfig() {
           <div className="text-[22px] font-semibold tracking-tight">Room Configuration</div>
           <div className="text-xs text-[#7d8590] mt-1 font-mono">Void-logic grid editor · Up to {MAX_ROWS}×{MAX_COLS} seats</div>
         </div>
-        <button onClick={openCreate} className="btn btn-primary">+ Add Room</button>
+        {isAdmin && <button onClick={openCreate} className="btn btn-primary">+ Add Room</button>}
       </div>
 
       {/* Room list */}
@@ -92,8 +95,12 @@ export default function RoomConfig() {
                   <button onClick={() => setGridViewId(isViewing ? null : room.id)} className="btn btn-outline text-[10px] !py-1 !px-2">
                     {isViewing ? '▲ Hide' : '▼ Grid'}
                   </button>
-                  <button onClick={() => openEdit(room)} className="btn btn-outline text-[10px] !py-1 !px-2">Edit</button>
-                  <button onClick={() => handleDelete(room.id)} className="btn btn-danger text-[10px] !py-1 !px-2">✗</button>
+                  {isAdmin && (
+                    <>
+                      <button onClick={() => openEdit(room)} className="btn btn-outline text-[10px] !py-1 !px-2">Edit</button>
+                      <button onClick={() => handleDelete(room.id)} className="btn btn-danger text-[10px] !py-1 !px-2">✗</button>
+                    </>
+                  )}
                 </div>
               </div>
               {isViewing && room.seatGrid && (

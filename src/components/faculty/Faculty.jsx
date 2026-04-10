@@ -1,5 +1,6 @@
 // src/components/faculty/Faculty.jsx
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../common/Toast';
 import Modal from '../common/Modal';
@@ -53,8 +54,10 @@ function Field({ label, children }) {
 }
 
 export default function Faculty() {
+  const { user } = useAuth();
   const { state, dispatch } = useApp();
   const toast = useToast();
+  const isAdmin = user?.role === 'admin';
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(null); // null | 'add' | {edit: faculty}
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -95,7 +98,7 @@ export default function Faculty() {
         <div className="flex gap-2.5">
           <input type="text" placeholder="Search faculty..." value={search} onChange={e => setSearch(e.target.value)}
             className="bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3.5 py-2 font-mono text-xs outline-none w-[240px] focus:border-[#f0a500] transition-colors" />
-          <button className="btn btn-primary" onClick={() => setModal('add')}>+ Add Faculty</button>
+          {isAdmin && <button className="btn btn-primary" onClick={() => setModal('add')}>+ Add Faculty</button>}
         </div>
       </div>
 
@@ -128,8 +131,12 @@ export default function Faculty() {
                   </td>
                   <td className="px-4 py-[10px]">
                     <div className="flex gap-2">
-                      <button onClick={() => setModal({ edit: f })} className="font-mono text-[10px] text-[#7d8590] hover:text-[#f0a500] transition-colors border border-[#30363d] hover:border-[#f0a500] px-2 py-0.5">Edit</button>
-                      <button onClick={() => setConfirmDelete(f.id)} className="font-mono text-[10px] text-[#7d8590] hover:text-[#f85149] transition-colors border border-[#30363d] hover:border-[#f85149] px-2 py-0.5">Del</button>
+                      {isAdmin && (
+                        <>
+                          <button onClick={() => setModal({ edit: f })} className="font-mono text-[10px] text-[#7d8590] hover:text-[#f0a500] transition-colors border border-[#30363d] hover:border-[#f0a500] px-2 py-0.5">Edit</button>
+                          <button onClick={() => setConfirmDelete(f.id)} className="font-mono text-[10px] text-[#7d8590] hover:text-[#f85149] transition-colors border border-[#30363d] hover:border-[#f85149] px-2 py-0.5">Del</button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -142,13 +149,13 @@ export default function Faculty() {
         </table>
       </div>
 
-      {modal === 'add' && (
+      {modal === 'add' && isAdmin && (
         <Modal title="Add Faculty Member" onClose={() => setModal(null)}>
           <style>{`.field-input { background: #1c2128; border: 1px solid #30363d; color: #e6edf3; padding: 8px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; outline: none; width: 100%; transition: border-color 0.15s; } .field-input:focus { border-color: #f0a500; }`}</style>
           <FacultyForm initial={EMPTY_FORM} onSave={handleAdd} onCancel={() => setModal(null)} />
         </Modal>
       )}
-      {modal?.edit && (
+      {modal?.edit && isAdmin && (
         <Modal title="Edit Faculty Member" onClose={() => setModal(null)}>
           <style>{`.field-input { background: #1c2128; border: 1px solid #30363d; color: #e6edf3; padding: 8px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; outline: none; width: 100%; transition: border-color 0.15s; } .field-input:focus { border-color: #f0a500; }`}</style>
           <FacultyForm initial={modal.edit} onSave={handleEdit} onCancel={() => setModal(null)} />

@@ -1,15 +1,18 @@
 // src/components/exam/ExamEvents.jsx
 // Admin: create/manage exam events + state machine transitions
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useExam, EXAM_STATES, STATE_COLORS, getNextStates } from '../../context/ExamContext';
 import { useToast } from '../common/Toast';
 import Modal from '../common/Modal';
 
 export default function ExamEvents() {
+  const { user } = useAuth();
   const { state, dispatch } = useApp();
   const { currentEvent, setCurrentEvent } = useExam();
   const toast = useToast();
+  const isAdmin = user?.role === 'admin';
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', type: 'CIE', year: '2025-26' });
 
@@ -58,7 +61,7 @@ export default function ExamEvents() {
           <div className="text-[22px] font-semibold tracking-tight">Exam Events</div>
           <div className="text-xs text-[#7d8590] mt-1 font-mono">Create and manage exam cycles · Dynamic state machine</div>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn btn-primary">+ New Event</button>
+        {isAdmin && <button onClick={() => setShowForm(true)} className="btn btn-primary">+ New Event</button>}
       </div>
 
       {/* State machine legend */}
@@ -99,19 +102,19 @@ export default function ExamEvents() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {!isActive && (
+                  {!isActive && isAdmin && (
                     <button onClick={() => handleSelect(ev)} className="btn btn-outline text-[10px] !py-1 !px-2">
                       ◉ Set Active
                     </button>
                   )}
-                  {nextStates.map(ns => (
+                  {isAdmin && nextStates.map(ns => (
                     <button key={ns} onClick={() => handleTransition(ev, ns)}
                       className="btn btn-outline text-[10px] !py-1 !px-2"
                       style={{ borderColor: STATE_COLORS[ns]?.dot, color: STATE_COLORS[ns]?.dot }}>
                       → {ns}
                     </button>
                   ))}
-                  {ev.status === 'draft' && (
+                  {isAdmin && ev.status === 'draft' && (
                     <button onClick={() => handleDelete(ev.id)} className="btn btn-danger text-[10px] !py-1 !px-2">✗</button>
                   )}
                 </div>

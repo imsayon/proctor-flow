@@ -1,5 +1,6 @@
 // src/components/schedule/Schedule.jsx
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useExam } from '../../context/ExamContext';
 import { useToast } from '../common/Toast';
@@ -90,9 +91,11 @@ function SessionForm({ initial, rooms, onSave, onCancel }) {
 }
 
 export default function Schedule() {
+  const { user } = useAuth();
   const { state, dispatch } = useApp();
   const { currentEvent } = useExam();
   const toast = useToast();
+  const isAdmin = user?.role === 'admin';
   const [modal, setModal] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
@@ -131,7 +134,7 @@ export default function Schedule() {
           <div className="text-[22px] font-semibold tracking-tight">Exam Schedule</div>
           <div className="text-xs text-[#7d8590] mt-1 font-mono">{currentEvent?.name || 'All events'} · {state.sessions.length} sessions configured</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setModal('add')}>+ Add Session</button>
+        {isAdmin && <button className="btn btn-primary" onClick={() => setModal('add')}>+ Add Session</button>}
       </div>
 
       {/* Summary Bar */}
@@ -171,8 +174,12 @@ export default function Schedule() {
                   <td className="px-4 py-[10px]"><span className={`pill ${statusPill(s.status)}`}>{s.status}</span></td>
                   <td className="px-4 py-[10px]">
                     <div className="flex gap-2">
-                      <button onClick={() => setModal({ edit: s })} className="font-mono text-[10px] text-[#7d8590] hover:text-[#f0a500] border border-[#30363d] hover:border-[#f0a500] px-2 py-0.5 transition-colors">Edit</button>
-                      <button onClick={() => setConfirmDelete(s.id)} className="font-mono text-[10px] text-[#7d8590] hover:text-[#f85149] border border-[#30363d] hover:border-[#f85149] px-2 py-0.5 transition-colors">Del</button>
+                      {isAdmin && (
+                        <>
+                          <button onClick={() => setModal({ edit: s })} className="font-mono text-[10px] text-[#7d8590] hover:text-[#f0a500] border border-[#30363d] hover:border-[#f0a500] px-2 py-0.5 transition-colors">Edit</button>
+                          <button onClick={() => setConfirmDelete(s.id)} className="font-mono text-[10px] text-[#7d8590] hover:text-[#f85149] border border-[#30363d] hover:border-[#f85149] px-2 py-0.5 transition-colors">Del</button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
