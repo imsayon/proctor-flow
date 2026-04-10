@@ -35,7 +35,9 @@ service cloud.firestore {
     match /institutions/{institutionId} {
       allow read: if true;
       // Spark-only: allow one-time admin bootstrapping by updating hasAdmin/adminUid.
-      allow create: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.hasAdmin == true
+        && request.resource.data.adminUid == request.auth.uid;
       allow update: if isSignedIn()
         && resource.data.hasAdmin != true
         && request.resource.data.hasAdmin == true

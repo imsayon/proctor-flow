@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dsce",
+    "name": "Dayananda Sagar College of Engineering (DSCE)",
+    "aliases": ["DSCE", "Dayananda Sagar College of Engineering"],
+    "country": "IN",
+    "active": true,
+    "domains": ["dsce.edu.in"],
+    "hasAdmin": false
+  }
+]
+
