@@ -14,7 +14,7 @@ const firebaseConfig = {
 };
 
 // Detect demo mode (no real API key configured)
-export const IS_DEMO_MODE = !import.meta.env.VITE_FIREBASE_API_KEY;
+export const IS_DEMO_MODE = false;
 
 let app, auth, db, storage;
 

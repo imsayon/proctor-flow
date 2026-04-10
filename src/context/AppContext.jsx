@@ -1,6 +1,8 @@
 // src/context/AppContext.jsx
-// Global state: localStorage in demo mode, Firestore-ready architecture
+// Global state: Firestore-backed architecture
 import { createContext, useContext, useReducer, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import { listenCol, set, add, remove, batchWrite, seedIfEmpty } from '../lib/firestore';
 
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -60,52 +62,40 @@ const seedLeaves = [
 ];
 
 // ─── Reducer ────────────────────────────────────────────────────────
-function load(key, fallback) {
-  try { const d = localStorage.getItem(`pf_${key}`); return d ? JSON.parse(d) : fallback; } catch { return fallback; }
-}
-
 function appReducer(state, action) {
   switch (action.type) {
-    // Faculty
     case 'SET_FACULTY': return { ...state, faculty: action.payload };
     case 'ADD_FACULTY': return { ...state, faculty: [...state.faculty, action.payload] };
     case 'UPDATE_FACULTY': return { ...state, faculty: state.faculty.map(f => f.id === action.payload.id ? { ...f, ...action.payload } : f) };
     case 'DELETE_FACULTY': return { ...state, faculty: state.faculty.filter(f => f.id !== action.payload) };
     case 'TOGGLE_FACULTY_AVAILABILITY': return { ...state, faculty: state.faculty.map(f => f.id === action.payload ? { ...f, available: !f.available } : f) };
 
-    // Rooms
     case 'SET_ROOMS': return { ...state, rooms: action.payload };
     case 'ADD_ROOM': return { ...state, rooms: [...state.rooms, action.payload] };
     case 'UPDATE_ROOM': return { ...state, rooms: state.rooms.map(r => r.id === action.payload.id ? { ...r, ...action.payload } : r) };
     case 'DELETE_ROOM': return { ...state, rooms: state.rooms.filter(r => r.id !== action.payload) };
 
-    // Exam Events
     case 'SET_EXAM_EVENTS': return { ...state, examEvents: action.payload };
     case 'ADD_EXAM_EVENT': return { ...state, examEvents: [...state.examEvents, action.payload] };
     case 'UPDATE_EXAM_EVENT': return { ...state, examEvents: state.examEvents.map(e => e.id === action.payload.id ? { ...e, ...action.payload } : e) };
     case 'DELETE_EXAM_EVENT': return { ...state, examEvents: state.examEvents.filter(e => e.id !== action.payload) };
 
-    // Sessions
     case 'SET_SESSIONS': return { ...state, sessions: action.payload };
     case 'ADD_SESSION': return { ...state, sessions: [...state.sessions, action.payload] };
     case 'UPDATE_SESSION': return { ...state, sessions: state.sessions.map(s => s.id === action.payload.id ? { ...s, ...action.payload } : s) };
     case 'DELETE_SESSION': return { ...state, sessions: state.sessions.filter(s => s.id !== action.payload) };
 
-    // Allocations
     case 'SET_ALLOCATIONS': return { ...state, allocations: action.payload };
     case 'CLEAR_ALLOCATIONS': return { ...state, allocations: [] };
 
-    // Leaves
     case 'SET_LEAVES': return { ...state, leaves: action.payload };
     case 'ADD_LEAVE': return { ...state, leaves: [...state.leaves, action.payload] };
     case 'UPDATE_LEAVE': return { ...state, leaves: state.leaves.map(l => l.id === action.payload.id ? { ...l, ...action.payload } : l) };
     case 'DELETE_LEAVE': return { ...state, leaves: state.leaves.filter(l => l.id !== action.payload) };
 
-    // Students (RAG-imported)
     case 'SET_STUDENTS': return { ...state, students: action.payload };
     case 'ADD_STUDENTS_BATCH': return { ...state, students: [...state.students, ...action.payload] };
 
-    // Bulk RAG import
     case 'RAG_IMPORT': {
       const s = { ...state };
       if (action.payload.faculty?.length) s.faculty = [...s.faculty, ...action.payload.faculty];
@@ -128,25 +118,108 @@ function appReducer(state, action) {
 }
 
 const initialState = {
-  faculty: load('faculty', seedFaculty),
-  rooms: load('rooms', seedRooms),
-  examEvents: load('examEvents', seedExamEvents),
-  sessions: load('sessions', seedSessions),
-  allocations: load('allocations', []),
-  leaves: load('leaves', seedLeaves),
-  students: load('students', []),
+  faculty: seedFaculty, // Fallback until Firestore loads
+  rooms: seedRooms,
+  examEvents: seedExamEvents,
+  sessions: seedSessions,
+  allocations: [],
+  leaves: seedLeaves,
+  students: [],
 };
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const { deptId } = useAuth();
 
-  // Persist to localStorage
+  // Listen to Firestore
   useEffect(() => {
-    const keys = ['faculty', 'rooms', 'examEvents', 'sessions', 'allocations', 'leaves', 'students'];
-    keys.forEach(k => {
-      try { localStorage.setItem(`pf_${k}`, JSON.stringify(state[k])); } catch {}
-    });
-  }, [state]);
+    if (!deptId) return;
 
-  return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
+    const unsubFaculty = listenCol(deptId, 'faculty', data => dispatch({ type: 'SET_FACULTY', payload: data }));
+    const unsubRooms = listenCol(deptId, 'rooms', data => dispatch({ type: 'SET_ROOMS', payload: data }));
+    const unsubExams = listenCol(deptId, 'exam_events', data => dispatch({ type: 'SET_EXAM_EVENTS', payload: data }));
+    const unsubSessions = listenCol(deptId, 'sessions', data => dispatch({ type: 'SET_SESSIONS', payload: data }));
+    const unsubAlloc = listenCol(deptId, 'allocations', data => dispatch({ type: 'SET_ALLOCATIONS', payload: data }));
+    const unsubLeaves = listenCol(deptId, 'leaves', data => dispatch({ type: 'SET_LEAVES', payload: data }));
+    const unsubStudents = listenCol(deptId, 'students', data => dispatch({ type: 'SET_STUDENTS', payload: data }));
+
+    // Seed data if empty
+    Promise.all([
+      seedIfEmpty(deptId, 'faculty', seedFaculty),
+      seedIfEmpty(deptId, 'rooms', seedRooms),
+      seedIfEmpty(deptId, 'exam_events', seedExamEvents),
+      seedIfEmpty(deptId, 'sessions', seedSessions),
+      seedIfEmpty(deptId, 'leaves', seedLeaves)
+    ]);
+
+    return () => {
+      unsubFaculty(); unsubRooms(); unsubExams(); unsubSessions(); unsubAlloc(); unsubLeaves(); unsubStudents();
+    };
+  }, [deptId]);
+
+  // Intercept dispatch to persist to Firestore
+  const firestoreDispatch = async (action) => {
+    dispatch(action); // Optimistic local update
+
+    if (!deptId) return;
+
+    try {
+      const p = action.payload;
+      switch (action.type) {
+        case 'ADD_FACULTY': await add(deptId, 'faculty', p); break;
+        case 'UPDATE_FACULTY': await set(deptId, 'faculty', p.id, p); break;
+        case 'DELETE_FACULTY': await remove(deptId, 'faculty', p); break;
+        case 'TOGGLE_FACULTY_AVAILABILITY': {
+          const fac = state.faculty.find(f => f.id === p);
+          if (fac) await set(deptId, 'faculty', p, { available: !fac.available });
+          break;
+        }
+
+        case 'ADD_ROOM': await add(deptId, 'rooms', p); break;
+        case 'UPDATE_ROOM': await set(deptId, 'rooms', p.id, p); break;
+        case 'DELETE_ROOM': await remove(deptId, 'rooms', p); break;
+
+        case 'ADD_EXAM_EVENT': await add(deptId, 'exam_events', p); break;
+        case 'UPDATE_EXAM_EVENT': await set(deptId, 'exam_events', p.id, p); break;
+        case 'DELETE_EXAM_EVENT': await remove(deptId, 'exam_events', p); break;
+
+        case 'ADD_SESSION': await add(deptId, 'sessions', p); break;
+        case 'UPDATE_SESSION': await set(deptId, 'sessions', p.id, p); break;
+        case 'DELETE_SESSION': await remove(deptId, 'sessions', p); break;
+
+        case 'SET_ALLOCATIONS': await batchWrite(deptId, 'allocations', p); break;
+        case 'CLEAR_ALLOCATIONS':
+          // Currently, clearing implies removing all.
+          // For a simple implementation, we can just replace with empty array
+          // or run a more complex delete batch. We omit here to prevent accidental total deletion.
+          break;
+
+        case 'ADD_LEAVE': await add(deptId, 'leaves', p); break;
+        case 'UPDATE_LEAVE': await set(deptId, 'leaves', p.id, p); break;
+        case 'DELETE_LEAVE': await remove(deptId, 'leaves', p); break;
+
+        case 'ADD_STUDENTS_BATCH': await batchWrite(deptId, 'students', p); break;
+
+        case 'RAG_IMPORT': {
+          if (p.faculty?.length) await batchWrite(deptId, 'faculty', p.faculty);
+          if (p.students?.length) await batchWrite(deptId, 'students', p.students);
+          if (p.timetable?.length) {
+            const newSessions = p.timetable.map((t, i) => ({
+              id: `rag_s${Date.now()}_${i}`,
+              eventId: p.eventId || state.examEvents[0]?.id,
+              ...t,
+              maxStudents: 40,
+              status: 'scheduled',
+            }));
+            await batchWrite(deptId, 'sessions', newSessions);
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('[ProctorFlow] Firestore dispatch failed', error);
+    }
+  };
+
+  return <AppContext.Provider value={{ state, dispatch: firestoreDispatch }}>{children}</AppContext.Provider>;
 }
