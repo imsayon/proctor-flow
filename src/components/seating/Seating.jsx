@@ -1,9 +1,9 @@
 // src/components/seating/Seating.jsx
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useExam } from '../../context/ExamContext';
-import { generateSeating, getActiveCoords } from '../../utils/algorithm';
+import { generateSeating } from '../../utils/algorithm';
 
 const BRANCH_CONFIG = {
   ISE: { border: 'border-[#1f6feb]/50', bg: 'bg-[#1f6feb]/10', text: 'text-[#58a6ff]' },
@@ -17,32 +17,23 @@ export default function Seating() {
   const { user, isStudent } = useAuth();
   const { currentEvent } = useExam();
   const [selectedSession, setSelectedSession] = useState(null);
-  const [seats, setSeats] = useState([]);
   const [seed, setSeed] = useState(42);
 
   const eventSessions = currentEvent
     ? state.sessions.filter(s => s.eventId === currentEvent.id)
     : state.sessions;
 
-  useEffect(() => {
-    if (eventSessions.length && !selectedSession) setSelectedSession(eventSessions[0].id);
-  }, [eventSessions, selectedSession]);
-
-  const session = state.sessions.find(s => s.id === selectedSession);
+  const effectiveSessionId = selectedSession || eventSessions[0]?.id || null;
+  const session = state.sessions.find(s => s.id === effectiveSessionId);
   const room = state.rooms.find(r => r.id === session?.roomId);
-  const alloc = state.allocations.find(a => a.sessionId === selectedSession);
+  const alloc = state.allocations.find(a => a.sessionId === effectiveSessionId);
 
-  useEffect(() => {
-    if (!room) return;
-    const grid = room.seatGrid || room.benchLayout;
-    if (grid) {
-      const { seats: gen } = generateSeating(grid, seed);
-      setSeats(gen);
-    } else {
-      const { seats: gen } = generateSeating(session?.maxStudents || 40, seed);
-      setSeats(gen);
-    }
-  }, [room, seed, session]);
+  const seats = useMemo(() => {
+    if (!room) return [];
+    const gridLike = room.seatGrid || room.benchLayout;
+    if (gridLike) return generateSeating(gridLike, seed).seats;
+    return generateSeating(session?.maxStudents || 40, seed).seats;
+  }, [room, seed, session?.maxStudents]);
 
   const reshuffle = () => setSeed(s => s + 1);
 
@@ -65,7 +56,7 @@ export default function Seating() {
           </div>
         </div>
         <div className="flex gap-2 items-center">
-          <select value={selectedSession || ''} onChange={e => setSelectedSession(e.target.value)}
+          <select value={effectiveSessionId || ''} onChange={e => setSelectedSession(e.target.value)}
             className="bg-[#1c2128] border border-[#30363d] text-[#e6edf3] px-3 py-2 font-mono text-xs outline-none focus:border-[#f0a500]">
             {eventSessions.map(s => (
               <option key={s.id} value={s.id}>

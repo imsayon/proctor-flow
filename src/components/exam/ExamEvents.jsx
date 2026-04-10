@@ -8,7 +8,7 @@ import Modal from '../common/Modal';
 
 export default function ExamEvents() {
   const { state, dispatch } = useApp();
-  const { currentEvent, setCurrentEvent, transitionState } = useExam();
+  const { currentEvent, setCurrentEvent } = useExam();
   const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', type: 'CIE', year: '2025-26' });

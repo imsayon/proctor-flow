@@ -65,10 +65,10 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to={defaultRedirect} replace /> : <Login />} />
 
-      {/* Admin */}
-      <Route element={<RequireAuth allowedRoles={['admin']} />}>
+      {/* Admin + Faculty (faculty is read-only in UI; writes are blocked by rules + client guard) */}
+      <Route element={<RequireAuth allowedRoles={['admin', 'faculty']} />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={user?.role === 'faculty' ? <Navigate to="/faculty-portal" replace /> : <Dashboard />} />
           <Route path="/events" element={<ExamEvents />} />
           <Route path="/faculty" element={<Faculty />} />
           <Route path="/rooms" element={<RoomConfig />} />
@@ -76,15 +76,9 @@ function AppRoutes() {
           <Route path="/leaves" element={<Leaves />} />
           <Route path="/allocate" element={<Allocate />} />
           <Route path="/seating" element={<Seating />} />
-          <Route path="/retrieve" element={<RetrieveInfo />} />
+          <Route path="/retrieve" element={user?.role === 'admin' ? <RetrieveInfo /> : <Navigate to="/faculty-portal" replace />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/students" element={<StudentsList />} />
-        </Route>
-      </Route>
-
-      {/* Faculty */}
-      <Route element={<RequireAuth allowedRoles={['faculty']} />}>
-        <Route element={<AppLayout />}>
           <Route path="/faculty-portal" element={<FacultyPortal />} />
         </Route>
       </Route>

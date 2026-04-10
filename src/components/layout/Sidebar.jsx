@@ -14,7 +14,7 @@ const adminLinks = [
   { to: '/leaves', label: 'Leaves', icon: PenLine },
   { to: '/allocate', label: 'Allocate', icon: Zap },
   { to: '/seating', label: 'Seating', icon: Grid },
-  { to: '/retrieve', label: 'Retrieve Info', icon: FileSearch },
+  { to: '/retrieve', label: 'Retrieve Info', icon: FileSearch, adminOnly: true },
 ];
 
 const studentLinks = [
@@ -27,7 +27,10 @@ export default function Sidebar() {
   const { state } = useApp();
   const { currentEvent } = useExam();
   const isStudent = user?.role === 'student';
-  const links = isStudent ? studentLinks : adminLinks;
+  const isAdmin = user?.role === 'admin';
+  const links = isStudent
+    ? studentLinks
+    : adminLinks.filter(l => !l.adminOnly || isAdmin);
 
   const badges = {
     '/faculty': state.faculty.length,
@@ -73,7 +76,7 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="px-4 py-3 border-t border-[#30363d]">
         <div className="font-mono text-[8px] text-[#484f58]">ProctorFlow v3</div>
-        <div className="font-mono text-[8px] text-[#484f58]">ISE Dept · DSCE</div>
+        <div className="font-mono text-[8px] text-[#484f58]">Institution-scoped</div>
       </div>
     </div>
   );

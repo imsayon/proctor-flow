@@ -2,7 +2,7 @@
 // Global state: Firestore-backed architecture
 import { createContext, useContext, useReducer, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { listenCol, set, add, remove, batchWrite, seedIfEmpty } from '../lib/firestore';
+import { listenCol, listenDoc, studentViewDoc, set, add, remove, batchWrite } from '../lib/firestore';
 
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -95,6 +95,7 @@ function appReducer(state, action) {
 
     case 'SET_STUDENTS': return { ...state, students: action.payload };
     case 'ADD_STUDENTS_BATCH': return { ...state, students: [...state.students, ...action.payload] };
+    case 'SET_STUDENT_VIEW': return { ...state, studentView: action.payload };
 
     case 'RAG_IMPORT': {
       const s = { ...state };
@@ -125,84 +126,106 @@ const initialState = {
   allocations: [],
   leaves: seedLeaves,
   students: [],
+  studentView: null,
 };
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const { deptId } = useAuth();
+  const { institutionId, user, isStudent, isAdmin } = useAuth();
 
   // Listen to Firestore
   useEffect(() => {
-    if (!deptId) return;
+    if (!institutionId) return;
 
-    const unsubFaculty = listenCol(deptId, 'faculty', data => dispatch({ type: 'SET_FACULTY', payload: data }));
-    const unsubRooms = listenCol(deptId, 'rooms', data => dispatch({ type: 'SET_ROOMS', payload: data }));
-    const unsubExams = listenCol(deptId, 'exam_events', data => dispatch({ type: 'SET_EXAM_EVENTS', payload: data }));
-    const unsubSessions = listenCol(deptId, 'sessions', data => dispatch({ type: 'SET_SESSIONS', payload: data }));
-    const unsubAlloc = listenCol(deptId, 'allocations', data => dispatch({ type: 'SET_ALLOCATIONS', payload: data }));
-    const unsubLeaves = listenCol(deptId, 'leaves', data => dispatch({ type: 'SET_LEAVES', payload: data }));
-    const unsubStudents = listenCol(deptId, 'students', data => dispatch({ type: 'SET_STUDENTS', payload: data }));
+    // Student accounts should not read operational collections (privacy + rules).
+    if (isStudent && user?.uid) {
+      const unsubStudentView = listenDoc(
+        studentViewDoc(institutionId, user.uid),
+        data => dispatch({ type: 'SET_STUDENT_VIEW', payload: data })
+      );
+      return () => { unsubStudentView(); };
+    }
 
-    // Seed data if empty
-    Promise.all([
-      seedIfEmpty(deptId, 'faculty', seedFaculty),
-      seedIfEmpty(deptId, 'rooms', seedRooms),
-      seedIfEmpty(deptId, 'exam_events', seedExamEvents),
-      seedIfEmpty(deptId, 'sessions', seedSessions),
-      seedIfEmpty(deptId, 'leaves', seedLeaves)
-    ]);
+    const unsubFaculty = listenCol(institutionId, 'faculty', data => dispatch({ type: 'SET_FACULTY', payload: data }));
+    const unsubRooms = listenCol(institutionId, 'rooms', data => dispatch({ type: 'SET_ROOMS', payload: data }));
+    const unsubExams = listenCol(institutionId, 'exam_events', data => dispatch({ type: 'SET_EXAM_EVENTS', payload: data }));
+    const unsubSessions = listenCol(institutionId, 'sessions', data => dispatch({ type: 'SET_SESSIONS', payload: data }));
+    const unsubAlloc = listenCol(institutionId, 'allocations', data => dispatch({ type: 'SET_ALLOCATIONS', payload: data }));
+    const unsubLeaves = listenCol(institutionId, 'leaves', data => dispatch({ type: 'SET_LEAVES', payload: data }));
+    const unsubStudents = listenCol(institutionId, 'students', data => dispatch({ type: 'SET_STUDENTS', payload: data }));
 
     return () => {
       unsubFaculty(); unsubRooms(); unsubExams(); unsubSessions(); unsubAlloc(); unsubLeaves(); unsubStudents();
     };
-  }, [deptId]);
+  }, [institutionId, isStudent, user?.uid]);
 
   // Intercept dispatch to persist to Firestore
   const firestoreDispatch = async (action) => {
-    dispatch(action); // Optimistic local update
-
-    if (!deptId) return;
+    if (!institutionId) return;
 
     try {
+      const adminOnlyTypes = new Set([
+        'ADD_FACULTY',
+        'UPDATE_FACULTY',
+        'DELETE_FACULTY',
+        'TOGGLE_FACULTY_AVAILABILITY',
+        'ADD_ROOM',
+        'UPDATE_ROOM',
+        'DELETE_ROOM',
+        'ADD_EXAM_EVENT',
+        'UPDATE_EXAM_EVENT',
+        'DELETE_EXAM_EVENT',
+        'ADD_SESSION',
+        'UPDATE_SESSION',
+        'DELETE_SESSION',
+        'SET_ALLOCATIONS',
+        'ADD_STUDENTS_BATCH',
+        'RAG_IMPORT',
+      ]);
+
+      if (adminOnlyTypes.has(action.type) && !isAdmin) return;
+
+      dispatch(action); // Optimistic local update
+
       const p = action.payload;
       switch (action.type) {
-        case 'ADD_FACULTY': await add(deptId, 'faculty', p); break;
-        case 'UPDATE_FACULTY': await set(deptId, 'faculty', p.id, p); break;
-        case 'DELETE_FACULTY': await remove(deptId, 'faculty', p); break;
+        case 'ADD_FACULTY': await add(institutionId, 'faculty', p); break;
+        case 'UPDATE_FACULTY': await set(institutionId, 'faculty', p.id, p); break;
+        case 'DELETE_FACULTY': await remove(institutionId, 'faculty', p); break;
         case 'TOGGLE_FACULTY_AVAILABILITY': {
           const fac = state.faculty.find(f => f.id === p);
-          if (fac) await set(deptId, 'faculty', p, { available: !fac.available });
+          if (fac) await set(institutionId, 'faculty', p, { available: !fac.available });
           break;
         }
 
-        case 'ADD_ROOM': await add(deptId, 'rooms', p); break;
-        case 'UPDATE_ROOM': await set(deptId, 'rooms', p.id, p); break;
-        case 'DELETE_ROOM': await remove(deptId, 'rooms', p); break;
+        case 'ADD_ROOM': await add(institutionId, 'rooms', p); break;
+        case 'UPDATE_ROOM': await set(institutionId, 'rooms', p.id, p); break;
+        case 'DELETE_ROOM': await remove(institutionId, 'rooms', p); break;
 
-        case 'ADD_EXAM_EVENT': await add(deptId, 'exam_events', p); break;
-        case 'UPDATE_EXAM_EVENT': await set(deptId, 'exam_events', p.id, p); break;
-        case 'DELETE_EXAM_EVENT': await remove(deptId, 'exam_events', p); break;
+        case 'ADD_EXAM_EVENT': await add(institutionId, 'exam_events', p); break;
+        case 'UPDATE_EXAM_EVENT': await set(institutionId, 'exam_events', p.id, p); break;
+        case 'DELETE_EXAM_EVENT': await remove(institutionId, 'exam_events', p); break;
 
-        case 'ADD_SESSION': await add(deptId, 'sessions', p); break;
-        case 'UPDATE_SESSION': await set(deptId, 'sessions', p.id, p); break;
-        case 'DELETE_SESSION': await remove(deptId, 'sessions', p); break;
+        case 'ADD_SESSION': await add(institutionId, 'sessions', p); break;
+        case 'UPDATE_SESSION': await set(institutionId, 'sessions', p.id, p); break;
+        case 'DELETE_SESSION': await remove(institutionId, 'sessions', p); break;
 
-        case 'SET_ALLOCATIONS': await batchWrite(deptId, 'allocations', p); break;
+        case 'SET_ALLOCATIONS': await batchWrite(institutionId, 'allocations', p); break;
         case 'CLEAR_ALLOCATIONS':
           // Currently, clearing implies removing all.
           // For a simple implementation, we can just replace with empty array
           // or run a more complex delete batch. We omit here to prevent accidental total deletion.
           break;
 
-        case 'ADD_LEAVE': await add(deptId, 'leaves', p); break;
-        case 'UPDATE_LEAVE': await set(deptId, 'leaves', p.id, p); break;
-        case 'DELETE_LEAVE': await remove(deptId, 'leaves', p); break;
+        case 'ADD_LEAVE': await add(institutionId, 'leaves', p); break;
+        case 'UPDATE_LEAVE': await set(institutionId, 'leaves', p.id, p); break;
+        case 'DELETE_LEAVE': await remove(institutionId, 'leaves', p); break;
 
-        case 'ADD_STUDENTS_BATCH': await batchWrite(deptId, 'students', p); break;
+        case 'ADD_STUDENTS_BATCH': await batchWrite(institutionId, 'students', p); break;
 
         case 'RAG_IMPORT': {
-          if (p.faculty?.length) await batchWrite(deptId, 'faculty', p.faculty);
-          if (p.students?.length) await batchWrite(deptId, 'students', p.students);
+          if (p.faculty?.length) await batchWrite(institutionId, 'faculty', p.faculty);
+          if (p.students?.length) await batchWrite(institutionId, 'students', p.students);
           if (p.timetable?.length) {
             const newSessions = p.timetable.map((t, i) => ({
               id: `rag_s${Date.now()}_${i}`,
@@ -211,7 +234,7 @@ export function AppProvider({ children }) {
               maxStudents: 40,
               status: 'scheduled',
             }));
-            await batchWrite(deptId, 'sessions', newSessions);
+            await batchWrite(institutionId, 'sessions', newSessions);
           }
           break;
         }

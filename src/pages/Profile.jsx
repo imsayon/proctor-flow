@@ -114,8 +114,8 @@ export default function Profile() {
                   className="bg-[#0d1117] border border-[#30363d] px-3 py-2 text-sm text-[#7d8590] opacity-70 cursor-not-allowed" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-mono text-[#7d8590] uppercase tracking-wider">Department ID</label>
-                <input value={user?.deptId || 'global_admin'} readOnly disabled
+                <label className="text-xs font-mono text-[#7d8590] uppercase tracking-wider">Institution ID</label>
+                <input value={user?.institutionId || 'global_admin'} readOnly disabled
                   className="bg-[#0d1117] border border-[#30363d] px-3 py-2 text-sm text-[#7d8590] opacity-70 cursor-not-allowed" />
               </div>
               <button type="submit" disabled={!profileForm.name.trim() || profileForm.name === user?.name} 

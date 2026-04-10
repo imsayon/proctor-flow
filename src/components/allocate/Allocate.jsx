@@ -1,9 +1,11 @@
 // src/components/allocate/Allocate.jsx
 import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../common/Toast';
-import { runGreedyAllocation } from '../../utils/algorithm';
+import { runGreedyAllocation, getActiveCoords } from '../../utils/algorithm';
 import { exportCSV, exportPDF } from '../../utils/export';
+import { batchWrite } from '../../lib/firestore';
 
 const ALGO_STEPS = [
   { id: 'step1', num: '01', name: 'Constraint Classification', desc: 'Hard + Soft constraints' },
@@ -14,6 +16,7 @@ const ALGO_STEPS = [
 
 export default function Allocate() {
   const { state, dispatch } = useApp();
+  const { institutionId } = useAuth();
   const toast = useToast();
   const [phase, setPhase] = useState('idle'); // idle | running | done
   const [progress, setProgress] = useState(0);
@@ -58,6 +61,56 @@ export default function Allocate() {
     await new Promise(r => setTimeout(r, algoLogs.length * 80 + 300));
 
     dispatch({ type: 'SET_ALLOCATIONS', payload: allocations });
+
+    // Build student-safe projections for student accounts (no invigilators, no neighbor visibility).
+    try {
+      const sessions = state.sessions;
+      const roomsById = new Map(state.rooms.map(r => [r.id, r]));
+
+      const views = (state.students || [])
+        .filter(s => s.uid) // only provisioned students can have a secure view
+        .map(s => {
+          const ident = s.usn || s.rollNo || '';
+          const num = parseInt(String(ident).replace(/\D/g, '').slice(-3), 10);
+
+          const schedule = sessions.map(sess => {
+            const room = roomsById.get(sess.roomId);
+            const coords = room?.seatGrid ? getActiveCoords(room.seatGrid) : Array.from({ length: sess.maxStudents || 0 }, (_, i) => ({ row: Math.floor(i / 7), col: i % 7 }));
+            const idx = Number.isFinite(num) && coords.length ? (num % coords.length) : 0;
+            const seatNumber = coords.length ? idx + 1 : null;
+            const rc = coords.length ? coords[idx] : null;
+
+            return {
+              sessionId: sess.id,
+              date: sess.date,
+              slot: sess.slot,
+              startTime: sess.startTime,
+              endTime: sess.endTime,
+              subject: sess.subject,
+              roomName: room?.name || null,
+              seat: seatNumber ? { seatNumber, row: rc.row + 1, col: rc.col + 1 } : null,
+            };
+          });
+
+          return {
+            id: s.uid,
+            uid: s.uid,
+            name: s.name,
+            usn: s.usn,
+            branch: s.branch,
+            semester: s.semester || null,
+            updatedAt: new Date().toISOString(),
+            schedule,
+          };
+        });
+
+      if (institutionId && views.length) {
+        await batchWrite(institutionId, 'student_views', views);
+      }
+    } catch (e) {
+      console.warn('[Allocate] Failed to build student views', e);
+    }
+
     setProgress(100);
     setPhase('done');
     const assigned = allocations.filter(a => a.status === 'assigned').length;

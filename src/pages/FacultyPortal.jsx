@@ -38,6 +38,7 @@ export default function FacultyPortal() {
       type: 'ADD_LEAVE',
       payload: {
         id: `lv_${Date.now()}`,
+        facultyUid: user.uid,
         facultyId: user.employeeId,
         facultyName: user.name,
         from: leaveForm.from,

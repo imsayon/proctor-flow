@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'REPLACE_WITH_REAL_API_KEY',
@@ -17,15 +18,17 @@ const firebaseConfig = {
 export const IS_DEMO_MODE = false;
 
 let app, auth, db, storage;
+let functions;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
+  functions = getFunctions(app);
 } catch (e) {
   console.warn('[ProctorFlow] Firebase init failed — running in demo mode.', e.message);
 }
 
-export { auth, db, storage };
+export { auth, db, storage, functions };
 export default app;

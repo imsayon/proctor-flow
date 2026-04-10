@@ -26,7 +26,6 @@ export default function Leaves() {
   const others = state.leaves.filter(l => l.status !== 'pending');
 
   const handleStatusChange = (id, status) => {
-    const leave = state.leaves.find(l => l.id === id);
     dispatch({ type: 'UPDATE_LEAVE', payload: { id, status } });
     toast(status === 'approved' ? '✓ Leave approved' : 'Leave rejected', status === 'approved' ? 'success' : 'warn');
   };

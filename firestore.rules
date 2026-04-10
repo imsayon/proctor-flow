@@ -2,17 +2,97 @@ rules_version='2'
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 5, 10);
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function tokenInstitutionId() {
+      return request.auth.token.institutionId;
+    }
+
+    function tokenRole() {
+      return request.auth.token.role;
+    }
+
+    function isInstitutionMember(institutionId) {
+      return isSignedIn() && tokenInstitutionId() == institutionId;
+    }
+
+    function isAdmin(institutionId) {
+      return isInstitutionMember(institutionId) && tokenRole() == 'admin';
+    }
+
+    function isFaculty(institutionId) {
+      return isInstitutionMember(institutionId) && tokenRole() == 'faculty';
+    }
+
+    function isStudent(institutionId) {
+      return isInstitutionMember(institutionId) && tokenRole() == 'student';
+    }
+
+    // Institution directory: public read for picker UI (no auth required).
+    // Writes are done via Admin SDK (Cloud Functions) only.
+    match /institutions/{institutionId} {
+      allow read: if true;
+      allow write: if false;
+
+      // Users / claims mirror (per institution)
+      match /users/{uid} {
+        allow read: if isAdmin(institutionId) || (isInstitutionMember(institutionId) && request.auth.uid == uid);
+        allow create, update: if isAdmin(institutionId) || (isInstitutionMember(institutionId) && request.auth.uid == uid);
+        allow delete: if isAdmin(institutionId);
+      }
+
+      // Admin sees everything, faculty reads operational data, students see only student_views.
+      match /faculty/{docId} {
+        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
+        allow write: if isAdmin(institutionId);
+      }
+
+      match /students/{docId} {
+        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
+        allow write: if isAdmin(institutionId);
+      }
+
+      match /rooms/{docId} {
+        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
+        allow write: if isAdmin(institutionId);
+      }
+
+      match /sessions/{docId} {
+        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
+        allow write: if isAdmin(institutionId);
+      }
+
+      match /exam_events/{docId} {
+        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
+        allow write: if isAdmin(institutionId);
+
+        // Any nested subcollections under exam_events are also admin/faculty readable by default.
+        match /{subPath=**} {
+          allow read: if isAdmin(institutionId) || isFaculty(institutionId);
+          allow write: if isAdmin(institutionId);
+        }
+      }
+
+      match /allocations/{docId} {
+        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
+        allow write: if isAdmin(institutionId);
+      }
+
+      match /leaves/{leaveId} {
+        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
+        allow create: if isFaculty(institutionId) && request.resource.data.facultyUid == request.auth.uid;
+        allow update: if (isAdmin(institutionId)) ||
+          (isFaculty(institutionId) && resource.data.facultyUid == request.auth.uid && request.resource.data.facultyUid == request.auth.uid);
+        allow delete: if isAdmin(institutionId);
+      }
+
+      // Student-safe projections (no neighbor / invigilator leakage)
+      match /student_views/{uid} {
+        allow read: if isStudent(institutionId) && request.auth.uid == uid;
+        allow write: if isAdmin(institutionId);
+      }
     }
   }
 }
