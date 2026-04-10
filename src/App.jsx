@@ -22,6 +22,7 @@ import RetrieveInfo from './components/rag/RagPipeline';
 import StudentDashboard from './pages/StudentDashboard';
 import MySeat from './pages/MySeat';
 import Profile from './pages/Profile';
+import FacultyProfile from './pages/FacultyProfile';
 import FacultyPortal from './pages/FacultyPortal';
 import StudentsList from './pages/StudentsList';
 
@@ -65,10 +66,10 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to={defaultRedirect} replace /> : <Login />} />
 
-      {/* Admin + Faculty (faculty is read-only in UI; writes are blocked by rules + client guard) */}
-      <Route element={<RequireAuth allowedRoles={['admin', 'faculty']} />}>
+      {/* Admin routes */}
+      <Route element={<RequireAuth allowedRoles={['admin']} />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={user?.role === 'faculty' ? <Navigate to="/faculty-portal" replace /> : <Dashboard />} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/events" element={<ExamEvents />} />
           <Route path="/faculty" element={<Faculty />} />
           <Route path="/rooms" element={<RoomConfig />} />
@@ -76,10 +77,18 @@ function AppRoutes() {
           <Route path="/leaves" element={<Leaves />} />
           <Route path="/allocate" element={<Allocate />} />
           <Route path="/seating" element={<Seating />} />
-          <Route path="/retrieve" element={user?.role === 'admin' ? <RetrieveInfo /> : <Navigate to="/faculty-portal" replace />} />
+          <Route path="/retrieve" element={<RetrieveInfo />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/students" element={<StudentsList />} />
+        </Route>
+      </Route>
+
+      {/* Faculty routes */}
+      <Route element={<RequireAuth allowedRoles={['faculty']} />}>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Navigate to="/faculty-portal" replace />} />
           <Route path="/faculty-portal" element={<FacultyPortal />} />
+          <Route path="/profile" element={<FacultyProfile />} />
         </Route>
       </Route>
 

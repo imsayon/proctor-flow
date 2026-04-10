@@ -17,6 +17,11 @@ const adminLinks = [
   { to: '/retrieve', label: 'Retrieve Info', icon: FileSearch, adminOnly: true },
 ];
 
+const facultyLinks = [
+  { to: '/faculty-portal', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/profile', label: 'Profile', icon: Users },
+];
+
 const studentLinks = [
   { to: '/student', label: 'My Dashboard', icon: LayoutDashboard },
   { to: '/student/seat', label: 'My Seat', icon: Grid },
@@ -28,9 +33,11 @@ export default function Sidebar() {
   const { currentEvent } = useExam();
   const isStudent = user?.role === 'student';
   const isAdmin = user?.role === 'admin';
-  const links = isStudent
-    ? studentLinks
-    : adminLinks.filter(l => !l.adminOnly || isAdmin);
+  const isFaculty = user?.role === 'faculty';
+  
+  let links = studentLinks;
+  if (isFaculty) links = facultyLinks;
+  else if (isAdmin) links = adminLinks.filter(l => !l.adminOnly || isAdmin);
 
   const badges = {
     '/faculty': state.faculty.length,

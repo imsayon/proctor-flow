@@ -1,5 +1,6 @@
 // src/components/leaves/Leaves.jsx
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../common/Toast';
 import Modal from '../common/Modal';
@@ -16,11 +17,13 @@ function isConflict(leave, sessions) {
 }
 
 export default function Leaves() {
+  const { user } = useAuth();
   const { state, dispatch } = useApp();
   const toast = useToast();
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const isAdmin = user?.role === 'admin';
 
   const pending = state.leaves.filter(l => l.status === 'pending');
   const others = state.leaves.filter(l => l.status !== 'pending');
@@ -92,12 +95,14 @@ export default function Leaves() {
                 ? <span className="font-mono text-[10px] px-2.5 py-1 bg-[#f85149]/15 text-[#f85149] border border-[#f85149]/30 uppercase">✗ Window Conflict</span>
                 : <span className="font-mono text-[10px] px-2.5 py-1 bg-[#3fb950]/15 text-[#3fb950] border border-[#3fb950]/30 uppercase">✓ Safe Window</span>
               }
-              <div className="flex gap-2">
-                <button onClick={() => handleStatusChange(l.id, 'approved')}
-                  className="font-mono text-[10px] text-[#3fb950] border border-[#3fb950]/40 hover:bg-[#3fb950]/10 px-3 py-1 transition-colors">Approve</button>
-                <button onClick={() => handleStatusChange(l.id, 'rejected')}
-                  className="font-mono text-[10px] text-[#f85149] border border-[#f85149]/40 hover:bg-[#f85149]/10 px-3 py-1 transition-colors">Reject</button>
-              </div>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <button onClick={() => handleStatusChange(l.id, 'approved')}
+                    className="font-mono text-[10px] text-[#3fb950] border border-[#3fb950]/40 hover:bg-[#3fb950]/10 px-3 py-1 transition-colors">Approve</button>
+                  <button onClick={() => handleStatusChange(l.id, 'rejected')}
+                    className="font-mono text-[10px] text-[#f85149] border border-[#f85149]/40 hover:bg-[#f85149]/10 px-3 py-1 transition-colors">Reject</button>
+                </div>
+              )}
             </div>
           );
         })}
