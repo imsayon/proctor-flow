@@ -1,5 +1,5 @@
 // src/pages/FacultyProfile.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/common/Toast';
 import { User, Briefcase } from 'lucide-react';
@@ -10,12 +10,26 @@ export default function FacultyProfile() {
   
   const [form, setForm] = useState({ 
     name: user?.name || '',
-    designation: localStorage.getItem('faculty_designation') || 'Assistant Professor'
+    designation: 'Assistant Professor'
   });
+
+  useEffect(() => {
+    const savedName = localStorage.getItem('faculty_name');
+    const savedDesignation = localStorage.getItem('faculty_designation');
+    if (savedName || savedDesignation) {
+      setForm({
+        name: savedName || user?.name || '',
+        designation: savedDesignation || 'Assistant Professor'
+      });
+    }
+  }, [user]);
 
   const handleSave = (e) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) {
+      toast('Please enter your name', 'warn');
+      return;
+    }
     localStorage.setItem('faculty_name', form.name);
     localStorage.setItem('faculty_designation', form.designation);
     toast('✓ Profile updated successfully', 'success');
@@ -42,8 +56,10 @@ export default function FacultyProfile() {
               value={form.name} 
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               className="bg-[#0d1117] border border-[#30363d] px-3 py-2.5 text-sm text-[#e6edf3] outline-none focus:border-[#f0a500] transition-colors rounded" 
+              placeholder="Enter your full name"
               required
             />
+            <div className="text-[10px] text-[#7d8590] font-mono">Current: {user?.name || 'Not set'}</div>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -53,12 +69,12 @@ export default function FacultyProfile() {
               onChange={e => setForm(f => ({ ...f, designation: e.target.value }))}
               className="bg-[#0d1117] border border-[#30363d] px-3 py-2.5 text-sm text-[#e6edf3] outline-none focus:border-[#f0a500] transition-colors rounded"
             >
-              <option>Assistant Professor</option>
-              <option>Associate Professor</option>
-              <option>Professor</option>
-              <option>Lecturer</option>
-              <option>Senior Lecturer</option>
-              <option>Guest Faculty</option>
+              <option value="Assistant Professor">Assistant Professor</option>
+              <option value="Associate Professor">Associate Professor</option>
+              <option value="Professor">Professor</option>
+              <option value="Lecturer">Lecturer</option>
+              <option value="Senior Lecturer">Senior Lecturer</option>
+              <option value="Guest Faculty">Guest Faculty</option>
             </select>
           </div>
 
@@ -66,7 +82,7 @@ export default function FacultyProfile() {
             <label className="text-xs font-mono text-[#7d8590] uppercase tracking-wider">Email (Read Only)</label>
             <input 
               type="email"
-              value={user?.email || ''} 
+              value={user?.email || 'faculty@example.com'} 
               readOnly 
               disabled
               className="bg-[#0d1117] border border-[#30363d] px-3 py-2.5 text-sm text-[#7d8590] opacity-70 cursor-not-allowed rounded" 
@@ -77,7 +93,7 @@ export default function FacultyProfile() {
             <label className="text-xs font-mono text-[#7d8590] uppercase tracking-wider">Employee ID</label>
             <input 
               type="text"
-              value={user?.employeeId || ''} 
+              value={user?.employeeId || 'EMP_FACULTY'} 
               readOnly 
               disabled
               className="bg-[#0d1117] border border-[#30363d] px-3 py-2.5 text-sm text-[#7d8590] opacity-70 cursor-not-allowed rounded" 
@@ -87,8 +103,7 @@ export default function FacultyProfile() {
           <div className="flex gap-3 justify-end pt-4 border-t border-[#30363d]">
             <button 
               type="submit" 
-              disabled={!form.name.trim()} 
-              className="btn border-2 border-[#f0a500] text-[#f0a500] hover:bg-[#f0a500]/10 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-2">
+              className="border-2 border-[#f0a500] text-[#f0a500] hover:bg-[#f0a500]/10 px-6 py-2.5 rounded font-semibold text-sm transition-colors">
               Save Changes
             </button>
           </div>
