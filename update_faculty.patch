@@ -1,0 +1,44 @@
+--- src/pages/FacultyProfile.jsx
++++ src/pages/FacultyProfile.jsx
+@@ -4,6 +4,7 @@
+ import { useToast } from "../components/common/Toast"
+ import { User, Briefcase } from "lucide-react"
++import { doc, setDoc } from "firebase/firestore"
++import { db } from "../lib/firebase"
+ 
+ export default function FacultyProfile() {
+ 	const { user } = useAuth()
+ 	const toast = useToast()
+ 
+ 	const [name, setName] = useState("")
+ 	const [designation, setDesignation] = useState("Assistant Professor")
+ 
+ 	// Load data when component mounts
+ 	useEffect(() => {
+ 		const savedName = localStorage.getItem("faculty_name")
+ 		const savedDesignation = localStorage.getItem("faculty_designation")
+ 
+ 		setName(savedName || user?.name || "")
+ 		setDesignation(savedDesignation || "Assistant Professor")
+ 	}, [user])
+ 
+-	const handleSave = (e) => {
++	const handleSave = async (e) => {
+ 		e.preventDefault()
+ 		if (!name.trim()) {
+ 			toast("Please enter your name", "warn")
+ 			return
+ 		}
+ 		localStorage.setItem("faculty_name", name)
+ 		localStorage.setItem("faculty_designation", designation)
++       if (user?.uid && user?.institutionId) {
++           try {
++               const userRef = doc(db, "institutions", user.institutionId, "users", user.uid);
++               await setDoc(userRef, { name: name, designation: designation }, { merge: true });
++           } catch (error) {
++               console.error("Error updating profile in Firestore:", error);
++               toast("Failed to update profile to cloud.", "error");
++           }
++       }
+ 		toast("✓ Profile updated successfully", "success")
+ 	}
