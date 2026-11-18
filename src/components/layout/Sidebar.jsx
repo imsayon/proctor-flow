@@ -2,14 +2,14 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useApp } from "../../context/AppContext";
 import { useExam, STATE_COLORS } from "../../context/ExamContext";
-import { LayoutDashboard, CalendarDays, Users, Building2, ClipboardList, CalendarOff, WandSparkles, Grid2X2, FileSearch, GraduationCap, ArrowUpRight, X } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Users, Building2, ClipboardList, CalendarOff, WandSparkles, Grid2X2, FileSearch, GraduationCap, ArrowUpRight, X, ShieldCheck } from "lucide-react";
 
 const admin = [
   ["/", "Overview", LayoutDashboard], ["/events", "Exam events", CalendarDays],
   ["/faculty", "Faculty", Users], ["/rooms", "Rooms", Building2],
   ["/schedule", "Schedule", ClipboardList], ["/leaves", "Leave requests", CalendarOff],
   ["/allocate", "Run allocation", WandSparkles], ["/seating", "Seating", Grid2X2],
-  ["/retrieve", "Document intake", FileSearch], ["/students", "Students", GraduationCap],
+  ["/retrieve", "Document intake", FileSearch], ["/students", "Students", GraduationCap], ["/access", "Access requests", ShieldCheck],
 ];
 const faculty = admin.filter(([path]) => path !== "/retrieve" && path !== "/students")
   .map(([path,label,icon]) => path === "/" ? ["/faculty-portal", label, icon] : [path,label,icon]);

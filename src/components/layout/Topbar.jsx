@@ -8,7 +8,7 @@ const pages = {
   "/rooms": "Rooms", "/schedule": "Schedule", "/leaves": "Leave requests",
   "/allocate": "Allocation engine", "/seating": "Seating plans",
   "/retrieve": "Document intelligence", "/profile": "Profile",
-  "/students": "Students", "/student": "Student portal",
+  "/students": "Students", "/access": "Access requests", "/student": "Student portal",
   "/student/seat": "My seat", "/faculty-portal": "Faculty portal",
 };
 

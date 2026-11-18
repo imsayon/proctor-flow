@@ -32,6 +32,7 @@ import Profile from "./pages/Profile"
 import FacultyProfile from "./pages/FacultyProfile"
 import FacultyPortal from "./pages/FacultyPortal"
 import StudentsList from "./pages/StudentsList"
+import AccessRequests from "./components/auth/AccessRequests"
 
 // ── Route guard ───────────────────────────────────────────────────
 function RequireAuth({ allowedRoles }) {
@@ -120,6 +121,7 @@ function AppRoutes() {
 					<Route path="/retrieve" element={<RetrieveInfo />} />
 					<Route path="/profile" element={<Profile />} />
 					<Route path="/students" element={<StudentsList />} />
+					<Route path="/access" element={<AccessRequests />} />
 				</Route>
 			</Route>
 
