@@ -1,5 +1,6 @@
 // src/App.jsx
 import { useState } from "react"
+import { ThemeProvider } from "./theme"
 import {
 	BrowserRouter,
 	Routes,
@@ -37,7 +38,7 @@ function RequireAuth({ allowedRoles }) {
 	const { user, loading } = useAuth()
 	if (loading)
 		return (
-			<div className="min-h-screen bg-[#0d1117] flex items-center justify-center font-mono text-[#7d8590]">
+			<div className="min-h-screen flex items-center justify-center font-mono text-[var(--ui-muted)] bg-[var(--ui-bg)]">
 				Loading...
 			</div>
 		)
@@ -64,19 +65,20 @@ function RequireAuth({ allowedRoles }) {
 function AppLayout() {
 	const { isAdmin } = useAuth()
 	const [chatOpen, setChatOpen] = useState(false)
+	const [menuOpen, setMenuOpen] = useState(false)
 
 	return (
-		<div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
-			<Topbar
+		<div className="invigra-shell min-h-screen">
+			<Topbar onMenu={() => setMenuOpen(o => !o)}
 				onToggleChat={
 					isAdmin ? () => setChatOpen((o) => !o) : undefined
 				}
 			/>
 			<div className="flex" style={{ minHeight: "calc(100vh - 56px)" }}>
-				<Sidebar />
-				<div className="flex-1 p-7 overflow-y-auto min-h-0">
+				<Sidebar mobileOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+				<main className="invigra-main flex-1 p-5 md:p-8 overflow-y-auto min-h-0">
 					<Outlet />
-				</div>
+				</main>
 			</div>
 			{isAdmin && (
 				<ChatBot isOpen={chatOpen} onClose={() => setChatOpen(false)} />
@@ -165,6 +167,7 @@ function AppRoutes() {
 export default function App() {
 	return (
 		<BrowserRouter>
+			<ThemeProvider>
 			<AuthProvider>
 				<AppProvider>
 					<ExamProvider>
@@ -174,6 +177,7 @@ export default function App() {
 					</ExamProvider>
 				</AppProvider>
 			</AuthProvider>
+			</ThemeProvider>
 		</BrowserRouter>
 	)
 }

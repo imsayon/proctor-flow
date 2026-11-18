@@ -1,0 +1,183 @@
+/* Invigra design system — layered over the original utility classes so logic stays unchanged. */
+:root, :root[data-theme="light"] {
+  --ui-bg: #f4f7fc; --ui-surface: #ffffff; --ui-elevated: #f8faff;
+  --ui-ink: #19243b; --ui-muted: #697991; --ui-soft: #94a0b4;
+  --ui-line: #e2e8f1; --ui-accent: #5c55de; --ui-accent-rgb: 92,85,222;
+  --ui-accent-soft: #eeedff; --ui-blue: #376fe0; --ui-green: #16896a;
+  --ui-red: #dd5368; --ui-orange: #c47b19;
+  --ui-shadow: 0 12px 38px rgba(42,57,93,.048);
+}
+:root[data-theme="sage"] {
+  --ui-bg: #f1f7f3; --ui-surface: #ffffff; --ui-elevated: #f5fbf6;
+  --ui-ink: #203d38; --ui-muted: #68877e; --ui-soft: #8fa69d;
+  --ui-line: #dcece3; --ui-accent: #17836b; --ui-accent-rgb: 23,131,107;
+  --ui-accent-soft: #e4f5ed; --ui-blue: #4677b9; --ui-green: #17836b;
+  --ui-red: #c95864; --ui-orange: #b57a27;
+  --ui-shadow: 0 12px 38px rgba(27,82,60,.047);
+}
+:root[data-theme="midnight"] {
+  --ui-bg: #0f1627; --ui-surface: #182238; --ui-elevated: #222d46;
+  --ui-ink: #e9eef9; --ui-muted: #a2b0c5; --ui-soft: #7588a4;
+  --ui-line: #33435c; --ui-accent: #aa9cff; --ui-accent-rgb: 170,156,255;
+  --ui-accent-soft: #2a2851; --ui-blue: #8db6ff; --ui-green: #5cdaa9;
+  --ui-red: #ff8a98; --ui-orange: #ffbf74;
+  --ui-shadow: 0 12px 42px rgba(0,0,0,.18);
+}
+html, body, #root { min-height: 100%; }
+body { background: var(--ui-bg) !important; color: var(--ui-ink) !important; font-family: 'DM Sans', 'IBM Plex Sans', system-ui, sans-serif !important; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+::selection { background: var(--ui-accent-soft); color: var(--ui-ink); }
+.invigra-shell { color: var(--ui-ink); background: var(--ui-bg); }
+.invigra-main { min-width: 0; max-width: 1750px; margin: 0 auto; }
+.invigra-main > * { animation: invigra-enter .22s ease both; }
+@keyframes invigra-enter { from {opacity:.7;transform:translateY(5px)} to {opacity:1;transform:translateY(0)} }
+/* Semantic remapping of existing hand-coded Tailwind palette (every application page). */
+[class~="bg-[#0d1117]"], [class~="bg-[#0b0f14]"] { background-color: var(--ui-bg) !important; }
+[class~="bg-[#161b22]"], [class~="bg-[#111827]"] { background-color: var(--ui-surface) !important; }
+[class~="bg-[#1c2128]"], [class~="bg-[#21262d]"] { background-color: var(--ui-elevated) !important; }
+[class~="bg-[#30363d]"] { background-color: var(--ui-line) !important; }
+[class~="text-[#e6edf3]"], [class~="text-[#c9d1d9]"] { color: var(--ui-ink) !important; }
+[class~="text-[#7d8590]"], [class~="text-[#8b949e]"] { color: var(--ui-muted) !important; }
+[class~="text-[#484f58]"], [class~="text-[#6e7681]"] { color: var(--ui-soft) !important; }
+[class~="text-[#f0a500]"], [class~="text-[#d29922]"] { color: var(--ui-accent) !important; }
+[class~="text-[#1f6feb]"], [class~="text-[#58a6ff]"] { color: var(--ui-blue) !important; }
+[class~="text-[#3fb950]"] { color: var(--ui-green) !important; }
+[class~="text-[#f85149]"] { color: var(--ui-red) !important; }
+[class~="border-[#30363d]"], [class~="border-[#21262d]"] { border-color: var(--ui-line) !important; }
+[class~="border-[#f0a500]"] { border-color: var(--ui-accent) !important; }
+[class~="border-[#3fb950]"] { border-color: var(--ui-green) !important; }
+[class~="border-[#f85149]"] { border-color: var(--ui-red) !important; }
+[class~="bg-[#f0a500]"] { background-color: var(--ui-accent) !important; }
+[class~="bg-[#1f6feb]"] { background-color: var(--ui-blue) !important; }
+[class~="bg-[#3fb950]"] { background-color: var(--ui-green) !important; }
+[class~="bg-[#f85149]"] { background-color: var(--ui-red) !important; }
+[class~="hover:bg-[#1c2128]"]:hover { background-color: var(--ui-elevated) !important; }
+[class~="hover:text-[#e6edf3]"]:hover { color: var(--ui-ink) !important; }
+[class~="hover:border-[#7d8590]"]:hover { border-color: var(--ui-accent) !important; }
+[class~="pill-green"] { color: var(--ui-green) !important; background:color-mix(in srgb,var(--ui-green),transparent 89%) !important; }
+[class~="pill-blue"] { color: var(--ui-blue) !important; background:color-mix(in srgb,var(--ui-blue),transparent 89%) !important; }
+[class~="pill-red"] { color: var(--ui-red) !important; background:color-mix(in srgb,var(--ui-red),transparent 89%) !important; }
+[class~="pill-yellow"] { color: var(--ui-orange) !important; background:color-mix(in srgb,var(--ui-orange),transparent 89%) !important; }
+.pill { border-radius:999px !important; padding: 5px 10px !important; letter-spacing: .02em !important; }
+.btn { border-radius: 9px !important; font-family:inherit !important; font-weight:600 !important; letter-spacing:0 !important; padding:9px 15px !important; }
+.btn-primary { background:var(--ui-accent) !important; color:#fff !important; border-color:var(--ui-accent) !important; }
+.btn-outline { color:var(--ui-ink) !important; background:var(--ui-surface) !important; border-color:var(--ui-line) !important; }
+.btn-danger { color:var(--ui-red) !important; border-color:var(--ui-red) !important; }
+.invigra-main [class~="bg-[#161b22]"][class*="p-"],
+.invigra-main [class~="bg-[#1c2128]"][class*="p-"] { border-radius:15px !important; box-shadow:var(--ui-shadow); }
+.invigra-main input, .invigra-main select, .invigra-main textarea,
+.invigra-login input, .invigra-login select { color:var(--ui-ink); background:var(--ui-surface); border-color:var(--ui-line); border-radius:8px; }
+.invigra-main select option { color:var(--ui-ink); background:var(--ui-surface); }
+.invigra-main table { color:var(--ui-ink); }
+.invigra-main table tbody tr:hover { background:var(--ui-elevated); }
+.invigra-main [style*="background-color: rgb(13, 17, 23)"] { background-color:var(--ui-bg) !important; }
+.invigra-main [style*="background-color: rgb(22, 27, 34)"] { background-color:var(--ui-surface) !important; }
+.invigra-main ::-webkit-scrollbar-thumb { background:var(--ui-line); }
+.invigra-topbar { position:sticky; top:0; z-index:50; height:74px; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:0 28px; background:var(--ui-surface); border-bottom:1px solid var(--ui-line); }
+.invigra-topbar-leading,.invigra-topbar-actions { display:flex; align-items:center; gap:13px; min-width:0; }
+.invigra-mark { display:grid; place-items:center; width:35px; height:35px; flex-shrink:0; border-radius:11px; background:var(--ui-accent); color:white; box-shadow:0 5px 14px rgba(var(--ui-accent-rgb),.2); }
+.invigra-wordmark { font-size:22px; font-weight:800; letter-spacing:-1.1px; }
+.invigra-wordmark-period { color:var(--ui-accent); }
+.invigra-header-divider { height:22px; width:1px; background:var(--ui-line); margin:0 5px; }
+.invigra-breadcrumb { font-size:12px; color:var(--ui-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.invigra-breadcrumb span { color:var(--ui-soft); margin:0 8px; }
+.invigra-breadcrumb strong { color:var(--ui-ink); font-weight:600; }
+.invigra-ai-button { border:1px solid var(--ui-line); border-radius:10px; padding:9px 11px; color:var(--ui-accent); display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; background:var(--ui-surface); white-space:nowrap; }
+.invigra-ai-button:hover,.invigra-icon-btn:hover { background:var(--ui-accent-soft); }
+.invigra-online-dot { width:6px; height:6px; border-radius:100%; background:var(--ui-green); }
+.invigra-user { display:flex; gap:9px; align-items:center; text-align:left; border-left:1px solid var(--ui-line); padding-left:16px; }
+.invigra-avatar { display:grid;place-items:center;width:33px;height:33px;border-radius:50%;background:var(--ui-accent-soft);color:var(--ui-accent); }
+.invigra-user-copy { display:flex;flex-direction:column;gap:2px;white-space:nowrap;max-width:140px; }
+.invigra-user-copy strong { font-size:12px;overflow:hidden;text-overflow:ellipsis; }
+.invigra-user-copy small { font-size:10px;color:var(--ui-muted);text-transform:capitalize; }
+.invigra-icon-btn,.invigra-menu-btn,.invigra-sidebar-close { border:1px solid var(--ui-line); width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--ui-muted);background:var(--ui-surface); }
+.invigra-menu-btn,.invigra-sidebar-close { display:none; }
+.invigra-theme-picker { display:flex;gap:3px;align-items:center;border:1px solid var(--ui-line);border-radius:10px;padding:4px;background:var(--ui-elevated); }
+.invigra-theme-option { border-radius:7px; border:0; display:flex;align-items:center;justify-content:center; gap:7px;color:var(--ui-muted);padding:7px 8px;background:transparent;font-size:12px;font-weight:600; }
+.invigra-theme-option.active { background:var(--ui-surface);color:var(--ui-accent);box-shadow:0 1px 5px rgba(0,0,0,.07); }
+.invigra-sidebar { display:flex;flex-direction:column; flex:0 0 242px; width:242px; background:var(--ui-surface);border-right:1px solid var(--ui-line); min-height:calc(100vh - 74px); }
+.invigra-sidebar-label { padding:29px 21px 12px; letter-spacing:1.7px; font-size:10px; font-weight:800; color:var(--ui-soft); }
+.invigra-nav { display:flex; flex-direction:column; gap:4px; padding:0 12px; flex:1; overflow:auto; }
+.invigra-navlink { display:flex;align-items:center;gap:12px;min-height:43px; padding:0 12px; border-radius:10px;font-size:12.5px;font-weight:600;color:var(--ui-muted);text-decoration:none;transition:.15s; }
+.invigra-navlink:hover { background:var(--ui-elevated);color:var(--ui-ink); }
+.invigra-navlink.active { background:var(--ui-accent-soft); color:var(--ui-accent); }
+.invigra-navlink span { flex:1; }
+.invigra-navcount { border-radius:20px; padding:3px 7px;background:var(--ui-elevated);color:var(--ui-muted);font-size:10px; }
+.invigra-sidebar-bottom { padding:22px 13px; }
+.invigra-event-card { background:var(--ui-elevated); border:1px solid var(--ui-line);border-radius:14px;padding:15px;display:flex;flex-direction:column;gap:9px; }
+.invigra-event-eyebrow { font-size:9px; letter-spacing:1.3px;font-weight:800;color:var(--ui-muted); display:flex;gap:8px;align-items:center; }
+.invigra-event-pulse { width:7px;height:7px;background:var(--ui-green);border-radius:50%; }
+.invigra-event-card strong {font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.invigra-event-status {display:flex;align-items:center;justify-content:space-between;color:var(--ui-muted);font-size:11px;text-transform:capitalize;}
+.invigra-sidebar-foot {color:var(--ui-ink);font-size:12px;font-weight:800;padding:20px 8px 2px;}
+.invigra-sidebar-foot span {display:block;color:var(--ui-soft);font-size:10px;font-weight:500;margin-top:4px;}
+.invigra-mobile-scrim {display:none;}
+/* Fresh layout primitives for the main overview and sign-in */
+.iv-eyebrow { font-size:11px; letter-spacing:1.5px; color:var(--ui-accent); font-weight:800; text-transform:uppercase; }
+.iv-heading { font-size:clamp(25px,2.7vw,35px);line-height:1.15;letter-spacing:-1px;font-weight:800;margin:9px 0; }
+.iv-subhead { color:var(--ui-muted);font-size:13px;line-height:1.6; }
+.iv-panel { background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:17px;padding:22px;box-shadow:var(--ui-shadow); }
+.iv-panel-title { display:flex;align-items:center;justify-content:space-between;margin-bottom:21px;gap:12px; }
+.iv-panel-title h3 { font-size:15px;font-weight:800;letter-spacing:-.2px; }
+.iv-chip { border-radius:99px;font-size:10px;font-weight:800;padding:6px 9px;color:var(--ui-accent);background:var(--ui-accent-soft);white-space:nowrap; }
+.iv-action {display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 15px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-surface);color:var(--ui-ink);font-size:12px;font-weight:800;}
+.iv-action.primary {background:var(--ui-accent);border-color:var(--ui-accent);color:white;}
+.iv-action:hover { transform:translateY(-1px);box-shadow:var(--ui-shadow); }
+.iv-stat {border-radius:16px;background:var(--ui-surface);border:1px solid var(--ui-line);padding:19px;min-width:0;transition:transform .15s,border-color .15s;box-shadow:var(--ui-shadow);}
+.iv-stat:hover {transform:translateY(-2px);border-color:var(--ui-accent);}
+.iv-stat-icon {width:37px;height:37px;display:grid;place-items:center;background:var(--ui-accent-soft);color:var(--ui-accent);border-radius:11px;margin-bottom:17px;}
+.iv-stat-label { font-size:11px;color:var(--ui-muted);font-weight:700; }
+.iv-stat-value {font-size:27px;font-weight:800;line-height:1.3;margin-top:4px;letter-spacing:-1px;}
+.iv-stat-hint {color:var(--ui-soft);font-size:10px;margin-top:5px;}
+.iv-progress-track {height:7px;background:var(--ui-elevated);border-radius:15px;overflow:hidden;}
+.iv-progress-fill {height:100%;border-radius:15px;background:var(--ui-accent);}
+.iv-session-row {display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ui-line);padding:12px 0;font-size:12px;}
+.iv-session-row:last-child {border-bottom:0;}
+.iv-session-date {font-size:11px;color:var(--ui-muted);min-width:57px;font-weight:700;}
+.iv-session-room {color:var(--ui-muted);margin-left:auto;font-size:11px;}
+.iv-state {display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:10px;color:var(--ui-muted);font-weight:600;}
+.iv-state-dot {width:8px;height:8px;border-radius:50%;background:var(--ui-line);}
+.iv-state.is-done .iv-state-dot {background:var(--ui-accent);}
+.invigra-login { min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(460px,.85fr);background:var(--ui-bg);color:var(--ui-ink); }
+.iv-login-hero {padding:7vw;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(140deg,#4b44b7,#7168dd 56%,#948df0);color:white;min-height:100vh;position:relative;overflow:hidden;}
+.iv-login-hero::after {content:"";position:absolute;width:560px;height:560px;right:-210px;bottom:-240px;border:90px solid rgba(255,255,255,.08);border-radius:50%;pointer-events:none;}
+.iv-login-logo {font-weight:900;font-size:25px;letter-spacing:-1px;display:flex;gap:10px;align-items:center; }
+.iv-login-logo svg {background:rgba(255,255,255,.17);padding:8px;border-radius:12px;width:43px;height:43px;}
+.iv-login-hero h1 {font-size:clamp(35px,4vw,60px);font-weight:800;letter-spacing:-2px;line-height:1.1;max-width:560px;}
+.iv-login-hero p {opacity:.81;line-height:1.7;max-width:450px;margin-top:24px;}
+.iv-login-hero small {opacity:.65;font-size:12px;}
+.iv-login-content {padding:7vw;display:flex;align-items:center;justify-content:center;flex-direction:column;position:relative;}
+.iv-login-themes {position:absolute;right:28px;top:25px;}
+.iv-login-box {width:100%;max-width:490px;}
+.iv-role {width:100%;display:flex;align-items:center;gap:15px;padding:15px 16px;border:1px solid var(--ui-line);background:var(--ui-surface);border-radius:13px;text-align:left;transition:.15s;}
+.iv-role:hover,.iv-role.selected {border-color:var(--ui-accent);box-shadow:0 0 0 2px rgba(var(--ui-accent-rgb),.08);}
+.iv-role .role-icon {width:43px;height:43px;flex-shrink:0;border-radius:12px;display:grid;place-items:center;background:var(--ui-accent-soft);color:var(--ui-accent);}
+.iv-role strong {font-size:13px;display:block;}
+.iv-role small {font-size:11px;color:var(--ui-muted);display:block;margin-top:4px;}
+.iv-role .role-check {margin-left:auto;color:var(--ui-accent);}
+@media(max-width:1150px) { .invigra-breadcrumb,.invigra-user-copy {display:none;} .invigra-sidebar {flex-basis:215px;width:215px;} }
+@media(max-width:900px) {
+  .invigra-topbar {height:66px;padding:0 16px;}
+  .invigra-sidebar {position:fixed;top:66px;bottom:0;left:0;z-index:60;transform:translateX(-105%);box-shadow:var(--ui-shadow);transition:transform .2s;min-height:auto;}
+  .invigra-sidebar.is-open {transform:translateX(0);}
+  .invigra-mobile-scrim {display:block;position:fixed;inset:66px 0 0;background:rgba(10,22,44,.38);z-index:55;width:100%;border:0;}
+  .invigra-menu-btn,.invigra-sidebar-close {display:grid;}
+  .invigra-sidebar-label {display:flex;align-items:center;justify-content:space-between;}
+  .invigra-main {padding:22px 17px;}
+  .invigra-login {grid-template-columns:1fr;}
+  .iv-login-hero {min-height:240px;padding:35px;gap:35px;}
+  .iv-login-hero h1 {font-size:32px;}
+  .iv-login-hero p,.iv-login-hero small {display:none;}
+  .iv-login-content {padding:58px 24px;}
+}
+@media(max-width:580px) {
+  .invigra-ai-button span:not(.invigra-online-dot), .invigra-user {display:none;}
+  .invigra-ai-button {padding:8px;} .invigra-topbar-actions {gap:5px;}
+  .invigra-topbar-leading {gap:8px;}
+  .invigra-wordmark {font-size:20px;}
+  .iv-panel {padding:16px;}
+  .iv-login-hero {min-height:210px;}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after {scroll-behavior:auto !important;animation-duration:.01ms !important;transition-duration:.01ms !important;}}

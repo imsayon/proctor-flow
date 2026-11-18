@@ -1,90 +1,45 @@
-// src/components/layout/Topbar.jsx
-import { useAuth } from "../../context/AuthContext"
-import { useNavigate } from "react-router-dom"
-import { Bot, LogOut, User as UserIcon } from "lucide-react"
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Bot, LogOut, UserRound, Menu, GraduationCap } from "lucide-react";
+import { ThemeSwitcher } from "../../theme";
 
-export default function Topbar({ onToggleChat }) {
-	const { user, logout, isAdmin } = useAuth()
-	const navigate = useNavigate()
+const pages = {
+  "/": "Overview", "/events": "Exam events", "/faculty": "Faculty",
+  "/rooms": "Rooms", "/schedule": "Schedule", "/leaves": "Leave requests",
+  "/allocate": "Allocation engine", "/seating": "Seating plans",
+  "/retrieve": "Document intelligence", "/profile": "Profile",
+  "/students": "Students", "/student": "Student portal",
+  "/student/seat": "My seat", "/faculty-portal": "Faculty portal",
+};
 
-	const handleLogout = () => {
-		logout()
-		navigate("/login")
-	}
-
-	const isAdminOrFaculty = user?.role === "admin" || user?.role === "faculty"
-	const roleColor = user?.role === "admin" ? "#f0a500" : "#3fb950"
-	const roleLabel =
-		user?.role === "admin"
-			? "Admin"
-			: user?.role === "faculty"
-				? "Faculty"
-				: "Student"
-
-	return (
-		<div className="bg-[#161b22] border-b border-[#30363d] flex items-center justify-between px-7 h-14 sticky top-0 z-50">
-			<div className="flex items-center gap-3">
-				<div className="text-base font-semibold tracking-tight">
-					<span className="text-[#f0a500]">Proctor</span>Flow
-				</div>
-				<span className="font-mono text-[9px] text-[#484f58]">v3</span>
-			</div>
-			<div className="flex items-center gap-6">
-				{/* AI Chat toggle (admin only) */}
-				{isAdmin && onToggleChat && (
-					<button
-						onClick={onToggleChat}
-						className="flex items-center gap-1.5 font-sans text-xs font-medium text-[#7d8590] hover:text-[#3fb950] transition-colors border border-transparent hover:border-[#3fb950]/30 hover:bg-[#3fb950]/10 px-3 py-1.5 rounded-full relative"
-					>
-						<span className="absolute top-1 right-2 w-1.5 h-1.5 bg-[#3fb950] rounded-full animate-pulse" />
-						<Bot size={16} className="text-[#3fb950]" />
-						AI Assistant
-					</button>
-				)}
-				<div className="flex items-center gap-3 border-l border-[#30363d] pl-4">
-					<div className="text-right">
-						<div
-							className="text-xs font-semibold hover:text-[#e6edf3] cursor-pointer"
-							onClick={() =>
-								isAdminOrFaculty &&
-								navigate(
-									user?.role === "faculty"
-										? "/profile"
-										: "/profile",
-								)
-							}
-						>
-							{user?.name}
-						</div>
-						<div
-							className="font-mono text-[9px]"
-							style={{ color: roleColor }}
-						>
-							{roleLabel}
-						</div>
-					</div>
-					<button
-						onClick={() =>
-							isAdminOrFaculty &&
-							navigate(
-								user?.role === "faculty"
-									? "/profile"
-									: "/profile",
-							)
-						}
-						className="w-8 h-8 border rounded flex items-center justify-center font-mono text-[10px] font-semibold hover:bg-[#1c2128] transition-colors"
-						style={{ borderColor: roleColor, color: roleColor }}
-					>
-						<UserIcon size={14} />
-					</button>
-					<button
-						onClick={handleLogout}
-						className="flex items-center gap-1 font-mono text-[10px] text-[#7d8590] hover:text-[#f85149] transition-colors ml-2"
-					>
-						<LogOut size={14} />
-					</button>
-				</div>
-			</div>
-		</div>
-	)
+export default function Topbar({ onToggleChat, onMenu }) {
+  const { user, logout, isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const handleLogout = () => { logout(); navigate("/login"); };
+  const canProfile = user?.role === "admin" || user?.role === "faculty";
+  return (
+    <header className="invigra-topbar">
+      <div className="invigra-topbar-leading">
+        <button type="button" className="invigra-menu-btn" onClick={onMenu} aria-label="Toggle navigation"><Menu size={20}/></button>
+        <div className="invigra-mark" aria-hidden="true"><GraduationCap size={20} strokeWidth={2.2}/></div>
+        <div className="invigra-wordmark">invigra<span className="invigra-wordmark-period">.</span></div>
+        <span className="invigra-header-divider" />
+        <div className="invigra-breadcrumb">Workspace <span>/</span> <strong>{pages[location.pathname] || "Workspace"}</strong></div>
+      </div>
+      <div className="invigra-topbar-actions">
+        <ThemeSwitcher compact />
+        {isAdmin && onToggleChat && (
+          <button type="button" onClick={onToggleChat} className="invigra-ai-button" title="Open AI assistant">
+            <Bot size={17}/><span>Ask Invigra</span><span className="invigra-online-dot" />
+          </button>
+        )}
+        <button type="button" onClick={() => canProfile && navigate("/profile")} className="invigra-user" title={user?.name || "Account"}>
+          <span className="invigra-avatar"><UserRound size={16}/></span>
+          <span className="invigra-user-copy"><strong>{user?.name || "User"}</strong><small>{user?.role || "Member"}</small></span>
+        </button>
+        <button type="button" className="invigra-icon-btn" onClick={handleLogout} aria-label="Sign out" title="Sign out"><LogOut size={17}/></button>
+      </div>
+    </header>
+  );
 }
