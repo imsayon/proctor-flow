@@ -29,7 +29,7 @@ export default function Login() {
   };
   return <div className="invigra-login">
     <section className="iv-login-hero">
-      <div className="iv-login-logo"><GraduationCap size={26}/> invigra.</div>
+      <div className="iv-login-logo"><GraduationCap size={26}/> examdesk.</div>
       <div><div className="text-xs font-bold tracking-[3px] uppercase mb-5 opacity-75">THE MODERN EXAM WORKSPACE</div><h1>Every exam.<br/>Perfectly in place.</h1>
         <p>Secure exam duty scheduling, faculty coordination, room management, and student seating in one institutional workspace.</p></div>
       <small>Built for Dayananda Sagar College of Engineering · ISE</small>
