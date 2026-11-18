@@ -1,126 +1,94 @@
-// src/components/dashboard/Dashboard.jsx
-import { useApp } from '../../context/AppContext';
-import { useExam, EXAM_STATES, STATE_COLORS } from '../../context/ExamContext';
-import { useNavigate } from 'react-router-dom';
-import { Calendar, Zap, FileSearch, Grid } from 'lucide-react';
-
+import { useApp } from "../../context/AppContext";
+import { useExam, EXAM_STATES } from "../../context/ExamContext";
+import { useNavigate } from "react-router-dom";
+import { CalendarDays, WandSparkles, FileSearch, Grid2X2, UsersRound, Building2, Layers3, CheckCheck, ClipboardCheck, GraduationCap, ArrowUpRight, Activity, Clock3 } from "lucide-react";
+const cardIcons = [UsersRound, Building2, Layers3, CheckCheck, ClipboardCheck, GraduationCap];
 export default function Dashboard() {
   const { state } = useApp();
   const { currentEvent } = useExam();
-  const nav = useNavigate();
-
-  const eventSessions = currentEvent
-    ? state.sessions.filter(s => s.eventId === currentEvent.id)
-    : state.sessions;
-  const eventAllocs = currentEvent
-    ? state.allocations.filter(a => a.eventId === currentEvent.id)
-    : state.allocations;
-
-  const stats = [
-    { label: 'Faculty', value: state.faculty.length, color: '#1f6feb', link: '/faculty' },
-    { label: 'Rooms', value: state.rooms.length, color: '#a371f7', link: '/rooms' },
-    { label: 'Sessions', value: eventSessions.length, color: '#f0a500', link: '/schedule' },
-    { label: 'Allocated', value: eventAllocs.filter(a => a.status === 'assigned').length, color: '#3fb950', link: '/allocate' },
-    { label: 'Leaves', value: state.leaves.filter(l => l.status === 'pending').length, color: '#f85149', link: '/leaves' },
-    { label: 'Students', value: state.students?.length || 0, color: '#58a6ff', link: '/students' },
-  ];
-
-  const availableFac = state.faculty.filter(f => f.available).length;
+  const navigate = useNavigate();
+  const sessions = currentEvent ? state.sessions.filter(s => s.eventId === currentEvent.id) : state.sessions;
+  const allocations = currentEvent ? state.allocations.filter(a => a.eventId === currentEvent.id) : state.allocations;
+  const available = state.faculty.filter(f => f.available).length;
   const onLeave = state.faculty.filter(f => !f.available).length;
-
-  return (
-    <div className="pb-10">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-7">
-        <div>
-          <div className="text-[22px] font-semibold tracking-tight">Dashboard</div>
-          <div className="text-xs text-[#7d8590] mt-1 font-mono">
-            {currentEvent ? `${currentEvent.name} · ${currentEvent.type} · ${currentEvent.year}` : 'No active event — select one from Exam Events'}
-          </div>
-        </div>
-        {currentEvent && (
-          <span className={`pill ${STATE_COLORS[currentEvent.status]?.bg} ${STATE_COLORS[currentEvent.status]?.text} border ${STATE_COLORS[currentEvent.status]?.border}`}>
-            {currentEvent.status}
-          </span>
-        )}
+  const stats = [
+    { label:"Faculty members", value:state.faculty.length, note:"Available roster", href:"/faculty" },
+    { label:"Exam rooms", value:state.rooms.length, note:"Space inventory", href:"/rooms" },
+    { label:"Exam sessions", value:sessions.length, note:"In current scope", href:"/schedule" },
+    { label:"Assignments", value:allocations.filter(a=>a.status==="assigned").length, note:"Confirmed duties", href:"/allocate" },
+    { label:"Pending leaves", value:state.leaves.filter(l=>l.status==="pending").length, note:"Awaiting review", href:"/leaves" },
+    { label:"Students", value:state.students?.length || 0, note:"Registered profiles", href:"/students" },
+  ];
+  const activeIdx = currentEvent ? EXAM_STATES.indexOf(currentEvent.status) : -1;
+  return <div className="pb-12 max-w-[1450px] mx-auto">
+    <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+      <div>
+        <div className="iv-eyebrow">EXAM OPERATIONS / OVERVIEW</div>
+        <h1 className="iv-heading">Good to see you. Here's the picture.</h1>
+        <p className="iv-subhead">{currentEvent ? [currentEvent.name,currentEvent.type,currentEvent.year].filter(Boolean).join(" · ") : "Your academic operations workspace. Select an exam event to get started."}</p>
       </div>
-
-      {/* State machine stepper */}
-      {currentEvent && (
-        <div className="flex gap-0 mb-6">
-          {EXAM_STATES.map((s, i) => {
-            const idx = EXAM_STATES.indexOf(currentEvent.status);
-            const sc = STATE_COLORS[s];
-            return (
-              <div key={s} className={`flex-1 py-2 px-3 border border-[#30363d] -mr-[1px] text-center font-mono text-[10px] transition-all ${
-                i <= idx ? `border-transparent` : 'bg-[#1c2128] text-[#484f58]'
-              }`} style={i <= idx ? { background: sc.dot + '15', color: sc.dot, borderColor: sc.dot + '40' } : {}}>
-                {i <= idx ? '✓ ' : ''}{s}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Stats grid */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
-        {stats.map(s => (
-          <div key={s.label} onClick={() => nav(s.link)}
-            className="bg-[#161b22] border border-[#30363d] p-4 relative overflow-hidden cursor-pointer hover:border-[#7d8590] transition-colors">
-            <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: s.color }} />
-            <div className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#7d8590] mb-2">{s.label}</div>
-            <div className="text-2xl font-bold">{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Faculty load overview */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-[#161b22] border border-[#30363d] p-5">
-          <div className="font-mono text-[11px] text-[#7d8590] uppercase tracking-[2px] mb-4">Faculty Availability</div>
-          <div className="flex gap-6 mb-3">
-            <div><span className="text-2xl font-bold text-[#3fb950]">{availableFac}</span> <span className="text-xs text-[#7d8590]">available</span></div>
-            <div><span className="text-2xl font-bold text-[#f85149]">{onLeave}</span> <span className="text-xs text-[#7d8590]">on leave / unavailable</span></div>
-          </div>
-          <div className="space-y-1">
-            {state.faculty.slice(0, 8).map(f => (
-              <div key={f.id} className="flex items-center gap-2">
-                <div className="flex-1 font-mono text-[10px] text-[#7d8590] truncate">{f.name}</div>
-                <div className="w-24 h-1.5 bg-[#30363d] overflow-hidden">
-                  <div className="h-full bg-[#1f6feb]" style={{ width: `${Math.min(100, (f.duties || 0) * 25)}%` }} />
-                </div>
-                <div className="font-mono text-[9px] text-[#7d8590] w-4 text-right">{f.duties || 0}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-[#161b22] border border-[#30363d] p-5">
-          <div className="font-mono text-[11px] text-[#7d8590] uppercase tracking-[2px] mb-4">Upcoming Sessions</div>
-          {eventSessions.slice(0, 6).map(s => {
-            const room = state.rooms.find(r => r.id === s.roomId);
-            return (
-              <div key={s.id} className="flex items-center gap-3 py-1.5 border-b border-[#30363d] last:border-0">
-                <span className={`pill ${s.slot === 'FN' ? 'pill-blue' : s.slot === 'AN' ? 'pill-yellow' : 'pill-green'}`}>{s.slot}</span>
-                <span className="font-mono text-xs">{new Date(s.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
-                <span className="text-xs font-medium flex-1 truncate">{s.subject}</span>
-                <span className="font-mono text-[10px] text-[#7d8590]">{room?.name || '—'}</span>
-              </div>
-            );
-          })}
-          {eventSessions.length === 0 && (
-            <div className="font-mono text-xs text-[#7d8590] py-4 text-center">No sessions for this event</div>
-          )}
-        </div>
-      </div>
-
-      {/* Quick actions */}
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => nav('/events')} className="btn btn-outline text-xs flex items-center gap-1.5"><Calendar size={14}/> Exam Events</button>
-        <button onClick={() => nav('/allocate')} className="btn btn-outline text-xs flex items-center gap-1.5"><Zap size={14}/> Run Allocation</button>
-        <button onClick={() => nav('/retrieve')} className="btn btn-outline text-xs flex items-center gap-1.5"><FileSearch size={14}/> Retrieve Info</button>
-        <button onClick={() => nav('/seating')} className="btn btn-outline text-xs flex items-center gap-1.5"><Grid size={14}/> Seating</button>
-      </div>
+      <button type="button" className="iv-action primary" onClick={()=>navigate("/allocate")}><WandSparkles size={16}/> Run allocation <ArrowUpRight size={16}/></button>
     </div>
-  );
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+      {stats.map((s,i)=>{
+        const Icon=cardIcons[i];
+        return <button type="button" key={s.label} className="iv-stat text-left" onClick={()=>navigate(s.href)}>
+          <div className="iv-stat-icon"><Icon size={19} strokeWidth={1.8}/></div>
+          <div className="iv-stat-label">{s.label}</div>
+          <div className="iv-stat-value">{s.value}</div>
+          <div className="iv-stat-hint">{s.note}</div>
+        </button>;
+      })}
+    </div>
+    {currentEvent && <div className="iv-panel mb-6">
+      <div className="iv-panel-title"><h3>Exam lifecycle</h3><span className="iv-chip">{currentEvent.status || "Draft"}</span></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        {EXAM_STATES.map((name,i)=><div className={"iv-state"+(activeIdx>=0 && i<=activeIdx ? " is-done" : "")} key={name}>
+          <span className="iv-state-dot" /><span className="truncate">{name}</span>
+        </div>)}
+      </div>
+    </div>}
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-6">
+      <section className="iv-panel lg:col-span-2">
+        <div className="iv-panel-title"><h3>Faculty availability</h3><span className="iv-chip"><Activity size={11} className="inline mr-1"/> Live roster</span></div>
+        <div className="flex gap-8 mb-5">
+          <div><div className="text-[29px] font-extrabold tracking-tight" style={{color:"var(--ui-green)"}}>{available}</div><div className="iv-subhead">Available</div></div>
+          <div><div className="text-[29px] font-extrabold tracking-tight" style={{color:"var(--ui-red)"}}>{onLeave}</div><div className="iv-subhead">Unavailable</div></div>
+        </div>
+        <div className="space-y-3">
+          {state.faculty.slice(0,6).map(f=><div key={f.id} className="flex items-center gap-3">
+            <span className="text-xs truncate w-30 flex-none">{f.name}</span>
+            <div className="iv-progress-track flex-1"><div className="iv-progress-fill" style={{width:Math.min(100,Math.max(0,(f.duties||0)*25))+"%"}}/></div>
+            <span className="text-xs w-5 text-right" style={{color:"var(--ui-muted)"}}>{f.duties||0}</span>
+          </div>)}
+          {!state.faculty.length && <p className="iv-subhead">No faculty records yet.</p>}
+        </div>
+      </section>
+      <section className="iv-panel lg:col-span-3">
+        <div className="iv-panel-title"><h3>Upcoming sessions</h3><button type="button" onClick={()=>navigate("/schedule")} className="iv-chip">Full timetable <ArrowUpRight size={12} className="inline"/></button></div>
+        {sessions.slice(0,6).map(s=>{
+          const room=state.rooms.find(r=>r.id===s.roomId);
+          const date=s.date ? new Date(s.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short"}) : "—";
+          return <div className="iv-session-row" key={s.id}>
+            <span className="iv-session-date"><CalendarDays size={13} className="inline mr-1"/>{date}</span>
+            <span className="iv-chip">{s.slot||"Session"}</span>
+            <strong className="text-xs truncate">{s.subject||"Unnamed exam"}</strong>
+            <span className="iv-session-room truncate">{room?.name||"Room TBD"}</span>
+          </div>;
+        })}
+        {!sessions.length && <div className="py-14 text-center">
+          <Clock3 size={29} className="mx-auto mb-3" style={{color:"var(--ui-soft)"}}/>
+          <strong className="text-sm">No sessions scheduled</strong>
+          <p className="iv-subhead mt-2">Create or select an exam event to see upcoming sessions here.</p>
+        </div>}
+      </section>
+    </div>
+    <section className="iv-panel">
+      <div className="iv-panel-title"><h3>Quick actions</h3><span className="iv-subhead">Everything in one place</span></div>
+      <div className="flex gap-2 flex-wrap">
+        {[["/events","Exam events",CalendarDays],["/allocate","Allocate duties",WandSparkles],["/seating","Plan seating",Grid2X2],["/retrieve","Import documents",FileSearch]]
+          .map(([href,label,Icon])=><button type="button" key={href} className="iv-action" onClick={()=>navigate(href)}><Icon size={16}/>{label}<ArrowUpRight size={14}/></button>)}
+      </div>
+    </section>
+  </div>;
 }
