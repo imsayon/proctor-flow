@@ -36,6 +36,9 @@ jobs:
       - name: Install Capacitor build tools
         run: npm install --no-save @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8
 
+      - name: Run scheduling and seating tests
+        run: npm test
+
       - name: Build Vite web bundle
         run: npm run build
 

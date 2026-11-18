@@ -1,8 +1,8 @@
 // src/context/AppContext.jsx
 // Global state: Firestore-backed architecture
-import { createContext, useContext, useReducer, useEffect } from 'react';
+import { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { listenCol, listenDoc, studentViewDoc, set, add, remove, batchWrite } from '../lib/firestore';
+import { listenCol, listenDoc, studentViewDoc, set, add, remove, batchWrite, replaceCollection, clearCollection } from '../lib/firestore';
 
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -118,19 +118,18 @@ function appReducer(state, action) {
   }
 }
 
+export const demoFixtures = {
+  faculty: seedFaculty, rooms: seedRooms, examEvents: seedExamEvents,
+  sessions: seedSessions, leaves: seedLeaves,
+};
 const initialState = {
-  faculty: seedFaculty, // Fallback until Firestore loads
-  rooms: seedRooms,
-  examEvents: seedExamEvents,
-  sessions: seedSessions,
-  allocations: [],
-  leaves: seedLeaves,
-  students: [],
-  studentView: null,
+  faculty: [], rooms: [], examEvents: [], sessions: [],
+  allocations: [], leaves: [], students: [], studentView: null,
 };
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const [writeError, setWriteError] = useState(null);
   const { institutionId, user, isStudent, isAdmin } = useAuth();
 
   // Listen to Firestore
@@ -161,88 +160,84 @@ export function AppProvider({ children }) {
 
   // Intercept dispatch to persist to Firestore
   const firestoreDispatch = async (action) => {
-    if (!institutionId) return;
-
+    if (!institutionId || !user) {
+      setWriteError("A signed-in institutional account is required.");
+      return false;
+    }
+    const adminOnlyTypes = new Set([
+      'ADD_FACULTY', 'UPDATE_FACULTY', 'DELETE_FACULTY', 'TOGGLE_FACULTY_AVAILABILITY',
+      'ADD_ROOM', 'UPDATE_ROOM', 'DELETE_ROOM',
+      'ADD_EXAM_EVENT', 'UPDATE_EXAM_EVENT', 'DELETE_EXAM_EVENT',
+      'ADD_SESSION', 'UPDATE_SESSION', 'DELETE_SESSION',
+      'SET_ALLOCATIONS', 'CLEAR_ALLOCATIONS', 'ADD_STUDENTS_BATCH', 'RAG_IMPORT',
+    ]);
+    if (adminOnlyTypes.has(action.type) && !isAdmin) {
+      setWriteError("Only administrators can modify examination operations.");
+      return false;
+    }
+    if (['UPDATE_LEAVE','DELETE_LEAVE'].includes(action.type) && !isAdmin) {
+      setWriteError("Only administrators can review or remove leave requests.");
+      return false;
+    }
+    const p = action.payload;
+    setWriteError(null);
     try {
-      const adminOnlyTypes = new Set([
-        'ADD_FACULTY',
-        'UPDATE_FACULTY',
-        'DELETE_FACULTY',
-        'TOGGLE_FACULTY_AVAILABILITY',
-        'ADD_ROOM',
-        'UPDATE_ROOM',
-        'DELETE_ROOM',
-        'ADD_EXAM_EVENT',
-        'UPDATE_EXAM_EVENT',
-        'DELETE_EXAM_EVENT',
-        'ADD_SESSION',
-        'UPDATE_SESSION',
-        'DELETE_SESSION',
-        'SET_ALLOCATIONS',
-        'ADD_STUDENTS_BATCH',
-        'RAG_IMPORT',
-      ]);
-
-      if (adminOnlyTypes.has(action.type) && !isAdmin) return;
-
-      dispatch(action); // Optimistic local update
-
-      const p = action.payload;
+      // Persist before updating React state. Never announce a successful write
+      // when Firestore rejected it: listeners will reconcile the remote truth.
       switch (action.type) {
         case 'ADD_FACULTY': await add(institutionId, 'faculty', p); break;
         case 'UPDATE_FACULTY': await set(institutionId, 'faculty', p.id, p); break;
         case 'DELETE_FACULTY': await remove(institutionId, 'faculty', p); break;
         case 'TOGGLE_FACULTY_AVAILABILITY': {
           const fac = state.faculty.find(f => f.id === p);
-          if (fac) await set(institutionId, 'faculty', p, { available: !fac.available });
+          if (!fac) throw new Error("Faculty record does not exist.");
+          await set(institutionId, 'faculty', p, { available: !fac.available });
           break;
         }
-
         case 'ADD_ROOM': await add(institutionId, 'rooms', p); break;
         case 'UPDATE_ROOM': await set(institutionId, 'rooms', p.id, p); break;
         case 'DELETE_ROOM': await remove(institutionId, 'rooms', p); break;
-
         case 'ADD_EXAM_EVENT': await add(institutionId, 'exam_events', p); break;
         case 'UPDATE_EXAM_EVENT': await set(institutionId, 'exam_events', p.id, p); break;
         case 'DELETE_EXAM_EVENT': await remove(institutionId, 'exam_events', p); break;
-
         case 'ADD_SESSION': await add(institutionId, 'sessions', p); break;
         case 'UPDATE_SESSION': await set(institutionId, 'sessions', p.id, p); break;
         case 'DELETE_SESSION': await remove(institutionId, 'sessions', p); break;
-
-        case 'SET_ALLOCATIONS': await batchWrite(institutionId, 'allocations', p); break;
-        case 'CLEAR_ALLOCATIONS':
-          // Currently, clearing implies removing all.
-          // For a simple implementation, we can just replace with empty array
-          // or run a more complex delete batch. We omit here to prevent accidental total deletion.
+        case 'SET_ALLOCATIONS': await replaceCollection(institutionId, 'allocations', p); break;
+        case 'CLEAR_ALLOCATIONS': await clearCollection(institutionId, 'allocations'); break;
+        case 'ADD_LEAVE': {
+          if (!isAdmin && (user.role !== 'faculty' || p.facultyUid !== user.uid || p.status !== 'pending')) {
+            throw new Error("You can only request leave for your own faculty account.");
+          }
+          await add(institutionId, 'leaves', p);
           break;
-
-        case 'ADD_LEAVE': await add(institutionId, 'leaves', p); break;
+        }
         case 'UPDATE_LEAVE': await set(institutionId, 'leaves', p.id, p); break;
         case 'DELETE_LEAVE': await remove(institutionId, 'leaves', p); break;
-
         case 'ADD_STUDENTS_BATCH': await batchWrite(institutionId, 'students', p); break;
-
         case 'RAG_IMPORT': {
           if (p.faculty?.length) await batchWrite(institutionId, 'faculty', p.faculty);
           if (p.students?.length) await batchWrite(institutionId, 'students', p.students);
           if (p.timetable?.length) {
-            const newSessions = p.timetable.map((t, i) => ({
-              id: `rag_s${Date.now()}_${i}`,
-              eventId: p.eventId || state.examEvents[0]?.id,
-              ...t,
-              maxStudents: 40,
-              status: 'scheduled',
+            const eventId = p.eventId || state.examEvents[0]?.id;
+            if (!eventId) throw new Error("Select an exam event before importing timetable rows.");
+            const sessions=p.timetable.map((t,i)=>({
+              id: 'rag_s'+Date.now()+'_'+i,eventId,...t,maxStudents:t.maxStudents||40,status:'scheduled',
             }));
-            await batchWrite(institutionId, 'sessions', newSessions);
+            await batchWrite(institutionId, 'sessions', sessions);
           }
           break;
         }
+        default: break;
       }
+      dispatch(action);
+      return true;
     } catch (error) {
-      console.error('[ProctorFlow] Firestore dispatch failed', error);
+      console.error('[Invigra] Firestore write failed', error);
+      setWriteError(error.message || "Unable to save changes to Firestore.");
+      return false;
     }
   };
 
-  return <AppContext.Provider value={{ state, dispatch: firestoreDispatch }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ state, dispatch: firestoreDispatch, writeError, clearWriteError: () => setWriteError(null) }}>{children}</AppContext.Provider>;
 }

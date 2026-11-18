@@ -3,19 +3,21 @@ import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../common/Toast';
-import { runGreedyAllocation, getActiveCoords } from '../../utils/algorithm';
+import { runGreedyAllocation, allocateEnrolledStudents, getActiveCoords } from '../../utils/algorithm';
 import { exportCSV, exportPDF } from '../../utils/export';
 import { batchWrite } from '../../lib/firestore';
+import { useExam } from '../../context/ExamContext';
 
 const ALGO_STEPS = [
   { id: 'step1', num: '01', name: 'Constraint Classification', desc: 'Hard + Soft constraints' },
   { id: 'step2', num: '02', name: 'Priority Queue Init', desc: 'Sort by load factor' },
-  { id: 'step3', num: '03', name: 'Greedy Allocation', desc: 'Backtrack on conflict' },
-  { id: 'step4', num: '04', name: 'Student Shuffling', desc: 'Fisher-Yates + gap constraint' },
+  { id: 'step3', num: '03', name: 'Greedy Allocation', desc: 'Validate and report conflicts' },
+  { id: 'step4', num: '04', name: 'Student Seating', desc: 'Enrolled roster + active seats' },
 ];
 
 export default function Allocate() {
   const { state, dispatch } = useApp();
+  const { currentEvent } = useExam();
   const { institutionId, user } = useAuth();
   const toast = useToast();
   const isAdmin = user?.role === 'admin';
@@ -35,95 +37,76 @@ export default function Allocate() {
   };
 
   const runAllocation = async () => {
-    if (state.sessions.length === 0) { toast('Add exam sessions first!', 'error'); return; }
-    if (state.faculty.length === 0) { toast('Add faculty first!', 'error'); return; }
+    if (!isAdmin) { toast("Administrator access required", "error"); return; }
+    if (!currentEvent) { toast("Select an exam event first", "error"); return; }
+    const sessions=state.sessions.filter(s=>s.eventId===currentEvent.id);
+    if (!sessions.length) { toast("Add sessions to the active event first", "error"); return; }
+    if (!state.faculty.length) { toast("Add faculty first", "error"); return; }
 
     setPhase('running');
     setProgress(0);
-    setLogs([]);
     setCurrentStep(0);
-    dispatch({ type: 'CLEAR_ALLOCATIONS' });
-
-    const stepDuration = 600;
-    for (let i = 0; i < ALGO_STEPS.length; i++) {
-      setCurrentStep(i);
-      await new Promise(r => setTimeout(r, stepDuration));
-      setProgress((i + 1) * 25);
-    }
-
-    const { allocations, logs: algoLogs } = runGreedyAllocation(
-      state.sessions, state.faculty, state.leaves, config
-    );
-
-    algoLogs.forEach((entry, idx) => {
-      setTimeout(() => appendLog(entry), idx * 80);
-    });
-
-    await new Promise(r => setTimeout(r, algoLogs.length * 80 + 300));
-
-    dispatch({ type: 'SET_ALLOCATIONS', payload: allocations });
-
-    // Build student-safe projections for student accounts (no invigilators, no neighbor visibility).
+    setLogs([]);
     try {
-      const sessions = state.sessions;
-      const roomsById = new Map(state.rooms.map(r => [r.id, r]));
+      const { allocations, logs: algoLogs } = runGreedyAllocation(
+        sessions,state.faculty,state.leaves,{...config,rooms:state.rooms}
+      );
+      setCurrentStep(1);setProgress(30);
+      const nextAllocations=[
+        ...state.allocations.filter(a=>a.eventId!==currentEvent.id),
+        ...allocations,
+      ];
+      const persisted=await dispatch({type:"SET_ALLOCATIONS",payload:nextAllocations});
+      if (!persisted) throw new Error("Database rejected the allocation. Nothing was published.");
+      setCurrentStep(2);setProgress(65);
 
-      const views = (state.students || [])
-        .filter(s => s.uid) // only provisioned students can have a secure view
-        .map(s => {
-          const ident = s.usn || s.rollNo || '';
-          const num = parseInt(String(ident).replace(/\D/g, '').slice(-3), 10);
-
-          const schedule = sessions.map(sess => {
-            const room = roomsById.get(sess.roomId);
-            const coords = room?.seatGrid ? getActiveCoords(room.seatGrid) : Array.from({ length: sess.maxStudents || 0 }, (_, i) => ({ row: Math.floor(i / 7), col: i % 7 }));
-            const idx = Number.isFinite(num) && coords.length ? (num % coords.length) : 0;
-            const seatNumber = coords.length ? idx + 1 : null;
-            const rc = coords.length ? coords[idx] : null;
-
-            return {
-              sessionId: sess.id,
-              date: sess.date,
-              slot: sess.slot,
-              startTime: sess.startTime,
-              endTime: sess.endTime,
-              subject: sess.subject,
-              roomName: room?.name || null,
-              seat: seatNumber ? { seatNumber, row: rc.row + 1, col: rc.col + 1 } : null,
-            };
+      const roomsById=new Map(state.rooms.map(r=>[r.id,r]));
+      const viewMap=new Map(
+        (state.students||[]).filter(s=>s.uid).map(s=>[s.uid,{
+          id:s.uid,uid:s.uid,name:s.name,usn:s.usn,branch:s.branch,
+          semester:s.semester||null,updatedAt:new Date().toISOString(),schedule:[],
+        }])
+      );
+      for(const sess of sessions) {
+        if (!allocations.some(a=>a.sessionId===sess.id && a.status==="assigned")) continue;
+        const room=roomsById.get(sess.roomId);
+        if (!room?.seatGrid) continue;
+        // Do not fabricate enrollment from roll numbers. A student's
+        // sessionIds must explicitly include this session.
+        const enrolled=(state.students||[]).filter(s=>s.uid && s.sessionIds?.includes(sess.id));
+        if (!enrolled.length) continue;
+        const seed=Array.from(String(sess.id)).reduce((a,c)=>a+c.charCodeAt(0),42);
+        const assigned=allocateEnrolledStudents(enrolled,room.seatGrid,seed);
+        for(const seat of assigned) {
+          const view=viewMap.get(seat.uid);
+          view.schedule.push({
+            sessionId:sess.id,date:sess.date,slot:sess.slot,
+            startTime:sess.startTime,endTime:sess.endTime,subject:sess.subject,
+            roomName:room.name,seat:{
+              seatNumber:seat.seatNumber,row:seat.row,col:seat.col,
+            },
           });
-
-          return {
-            id: s.uid,
-            uid: s.uid,
-            name: s.name,
-            usn: s.usn,
-            branch: s.branch,
-            semester: s.semester || null,
-            updatedAt: new Date().toISOString(),
-            schedule,
-          };
-        });
-
-      if (institutionId && views.length) {
-        await batchWrite(institutionId, 'student_views', views);
+        }
       }
-    } catch (e) {
-      console.warn('[Allocate] Failed to build student views', e);
+      const views=Array.from(viewMap.values());
+      if (views.length) await batchWrite(institutionId,'student_views',views);
+      setCurrentStep(3);setProgress(100);setPhase('done');
+      setLogs(algoLogs);
+      toast("Allocation saved: "+allocations.filter(a=>a.status==="assigned").length+"/"+sessions.length+" sessions assigned","success");
+    } catch(error) {
+      setPhase('idle');setProgress(0);
+      setLogs([{type:"warn",msg:error.message}]);
+      toast("Allocation not completed: "+error.message,"error");
     }
-
-    setProgress(100);
-    setPhase('done');
-    const assigned = allocations.filter(a => a.status === 'assigned').length;
-    toast(`✓ Allocation complete: ${assigned}/${state.sessions.length} sessions assigned`);
   };
 
-  const resetAllocation = () => {
+  const resetAllocation = async () => {
     setPhase('idle');
     setProgress(0);
     setCurrentStep(-1);
     setLogs([]);
-    dispatch({ type: 'CLEAR_ALLOCATIONS' });
+    const ok=await dispatch({ type: 'CLEAR_ALLOCATIONS' });
+    if (!ok) toast('Unable to clear stored allocations','error');
   };
 
   const handleExportCSV = () => {
@@ -146,7 +129,7 @@ export default function Allocate() {
       <div className="flex items-start justify-between mb-7">
         <div>
           <div className="text-[22px] font-semibold tracking-tight">Allocation Engine</div>
-          <div className="text-xs text-[#7d8590] mt-1 font-mono">Greedy + Backtracking · Hard &amp; Soft Constraint Validation</div>
+          <div className="text-xs text-[#7d8590] mt-1 font-mono">Workload-aware greedy scheduling · Hard &amp; Soft Constraint Validation</div>
         </div>
         {/* Export buttons always visible if data exists */}
         {allocations.length > 0 && (
@@ -164,7 +147,7 @@ export default function Allocate() {
       {/* Algorithm Pipeline */}
       <div className="bg-[#161b22] border border-[#30363d] p-6 mb-6">
         <div className="text-[15px] font-semibold mb-1">Algorithm Pipeline</div>
-        <div className="text-xs text-[#7d8590] font-mono mb-5">Greedy allocation + backtracking with hard/soft constraint validation</div>
+        <div className="text-xs text-[#7d8590] font-mono mb-5">Greedy allocation with time-overlap checks and explicit unassigned results</div>
 
         <div className="flex gap-0 mb-6 overflow-x-auto">
           {ALGO_STEPS.map((s, idx) => {

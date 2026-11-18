@@ -5,7 +5,7 @@ import { useToast } from "../components/common/Toast"
 import { User, Briefcase } from "lucide-react"
 
 export default function FacultyProfile() {
-	const { user } = useAuth()
+	const { user, updateAccountProfile } = useAuth()
 	const toast = useToast()
 
 	const [name, setName] = useState("")
@@ -13,23 +13,21 @@ export default function FacultyProfile() {
 
 	// Load data when component mounts
 	useEffect(() => {
-		const savedName = localStorage.getItem("faculty_name")
-		const savedDesignation = localStorage.getItem("faculty_designation")
+		const savedName = user?.name
+		const savedDesignation = user?.designation
 
 		setName(savedName || user?.name || "")
 		setDesignation(savedDesignation || "Assistant Professor")
 	}, [])
 
-	const handleSave = (e) => {
-		e.preventDefault()
-		if (!name.trim()) {
-			toast("Please enter your name", "warn")
-			return
-		}
-		localStorage.setItem("faculty_name", name)
-		localStorage.setItem("faculty_designation", designation)
-		toast("✓ Profile updated successfully", "success")
-	}
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) {toast("Please enter your name","warn");return;}
+    try {
+      await updateAccountProfile({name,designation});
+      toast("Profile updated successfully","success");
+    } catch(error) {toast("Profile update failed: "+error.message,"error");}
+  };
 
 	return (
 		<div className="pb-10 max-w-2xl">

@@ -57,7 +57,10 @@ export async function set(institutionId, colName, id, data) {
 }
 
 export async function add(institutionId, colName, data) {
-  return addDoc(col(institutionId, colName), { ...data, createdAt: serverTimestamp() });
+  const body = { ...data, createdAt: serverTimestamp() };
+  return data?.id
+    ? setDoc(doc(db, 'institutions', institutionId, colName, data.id), body)
+    : addDoc(col(institutionId, colName), body);
 }
 
 export async function remove(institutionId, colName, id) {
@@ -113,6 +116,34 @@ export async function batchWrite(institutionId, colName, records) {
     batch.set(ref, { ...rec, updatedAt: serverTimestamp() }, { merge: true });
   });
   return batch.commit();
+}
+
+/**
+ * Replace an institution collection by a single, atomic batch when possible.
+ * Never retain allocations from an older run.
+ */
+export async function replaceCollection(institutionId, colName, records) {
+  if (!Array.isArray(records)) throw new Error("Records must be an array.");
+  const existing=await getDocs(col(institutionId,colName));
+  const nextIds=new Set(records.map(r=>r.id).filter(Boolean));
+  const deletions=existing.docs.filter(d=>!nextIds.has(d.id));
+  if (deletions.length+records.length>450)
+    throw new Error("Batch exceeds safe transaction limit; split the operation.");
+  const batch=writeBatch(db);
+  for(const item of deletions) batch.delete(item.ref);
+  for(const item of records) {
+    const target=item.id ? doc(db,'institutions',institutionId,colName,item.id) : doc(col(institutionId,colName));
+    batch.set(target,{...item,updatedAt:serverTimestamp()});
+  }
+  await batch.commit();
+}
+export async function clearCollection(institutionId,colName) {
+  const existing=await getDocs(col(institutionId,colName));
+  for(let i=0;i<existing.docs.length;i+=450) {
+    const batch=writeBatch(db);
+    for(const item of existing.docs.slice(i,i+450)) batch.delete(item.ref);
+    await batch.commit();
+  }
 }
 
 // ─── Seed helpers ─────────────────────────────────────────────────────

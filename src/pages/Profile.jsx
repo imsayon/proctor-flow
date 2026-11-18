@@ -7,7 +7,7 @@ import { User, Key, Building2, Search, CheckCircle2, AlertTriangle, Fingerprint,
 import { identifyProvider } from '../lib/llm';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, updateAccountProfile, changePassword } = useAuth();
   const { state } = useApp();
   const toast = useToast();
   
@@ -28,26 +28,22 @@ export default function Profile() {
     s.branch.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleProfileSave = (e) => {
+  const handleProfileSave = async (e) => {
     e.preventDefault();
     if (!profileForm.name.trim()) return;
-    // In a real app with Firebase Auth: updateProfile(auth.currentUser, { displayName: profileForm.name })
-    toast('Profile updated (simulated)', 'success');
+    try { await updateAccountProfile({name:profileForm.name});toast('Profile saved','success'); }
+    catch(error){toast('Profile update failed: '+error.message,'error');}
   };
 
-  const handlePasswordSave = (e) => {
+  const handlePasswordSave = async (e) => {
     e.preventDefault();
-    if (pwdForm.newPwd !== pwdForm.confirm) {
-      toast('Passwords do not match', 'warn');
-      return;
-    }
-    if (pwdForm.newPwd.length < 8) {
-      toast('Password must be at least 8 characters', 'warn');
-      return;
-    }
-    // In a real app with Firebase Auth: updatePassword(auth.currentUser, pwdForm.newPwd)
-    toast('Password changed successfully (simulated)', 'success');
-    setPwdForm({ current: '', newPwd: '', confirm: '' });
+    if (pwdForm.newPwd !== pwdForm.confirm) {toast('Passwords do not match','warn');return;}
+    if (pwdForm.newPwd.length < 10) {toast('Password must be at least 10 characters','warn');return;}
+    try {
+      await changePassword(pwdForm.newPwd,pwdForm.current);
+      toast('Password updated','success');
+      setPwdForm({current:'',newPwd:'',confirm:''});
+    } catch(error){toast('Password update failed: '+error.message,'error');}
   };
 
   const handleFetchModels = async () => {

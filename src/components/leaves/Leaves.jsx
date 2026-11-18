@@ -32,24 +32,26 @@ export default function Leaves() {
 	const pending = state.leaves.filter((l) => l.status === "pending")
 	const others = state.leaves.filter((l) => l.status !== "pending")
 
-	const handleStatusChange = (id, status) => {
-		dispatch({ type: "UPDATE_LEAVE", payload: { id, status } })
+	const handleStatusChange = async (id, status) => {
+		const success = await dispatch({ type: "UPDATE_LEAVE", payload: { id, status } })
+    if (!success) {toast("Could not update leave status","error");return}
 		toast(
 			status === "approved" ? "✓ Leave approved" : "Leave rejected",
 			status === "approved" ? "success" : "warn",
 		)
 	}
 
-	const handleAddLeave = () => {
+	const handleAddLeave = async () => {
 		if (!form.facultyId || !form.from || !form.to || !form.reason) return
 		const faculty = state.faculty.find((f) => f.id === form.facultyId)
 		const conflict = isConflict(form, state.sessions)
 		const id = "l" + Date.now()
-		dispatch({
+		const success = await dispatch({
 			type: "ADD_LEAVE",
 			payload: {
 				id,
 				facultyId: form.facultyId,
+        facultyUid: user?.role === "faculty" ? user.uid : (faculty?.uid || null),
 				facultyName: faculty?.name || "Unknown",
 				from: form.from,
 				to: form.to,
@@ -58,6 +60,7 @@ export default function Leaves() {
 				conflict,
 			},
 		})
+    if (!success) {toast("Leave request could not be saved","error");return}
 		toast(
 			conflict
 				? "⚠ Leave added — CONFLICT DETECTED!"
@@ -82,7 +85,7 @@ export default function Leaves() {
 						Leave Requests
 					</div>
 					<div className="text-xs text-[#7d8590] mt-1 font-mono">
-						CIE-II window: Nov 17–22, 2025 (±3 day restriction)
+						Review leave requests and configurable exam-window restrictions
 					</div>
 				</div>
 				<button
@@ -95,8 +98,7 @@ export default function Leaves() {
 
 			{/* Policy Banner */}
 			<div className="bg-[#f85149]/10 border border-[#f85149]/30 px-4 py-3 mb-5 font-mono text-xs text-[#f85149]">
-				⚠ POLICY: No leave approved within 3 days before or after exam
-				window (Nov 14 – Nov 25, 2025)
+				POLICY: Allocation excludes leave periods using the configured buffer days. Review current event dates before approving requests.
 			</div>
 
 			{/* Pending */}
