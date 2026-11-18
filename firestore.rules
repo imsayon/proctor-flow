@@ -1,122 +1,99 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() {
-      return request.auth != null;
+    function signedIn() { return request.auth != null; }
+    function instPath(institutionId) {
+      return /databases/$(database)/documents/institutions/$(institutionId);
     }
-
-    function userDoc(institutionId) {
-      return get(/databases/$(database)/documents/institutions/$(institutionId)/users/$(request.auth.uid));
+    function userPath(institutionId) {
+      return /databases/$(database)/documents/institutions/$(institutionId)/users/$(request.auth.uid);
     }
-
-    function isInstitutionMember(institutionId) {
-      return isSignedIn() && exists(/databases/$(database)/documents/institutions/$(institutionId)/users/$(request.auth.uid))
-        && userDoc(institutionId).data.status == 'active';
+    function member(institutionId) {
+      return signedIn() && exists(userPath(institutionId))
+        && get(userPath(institutionId)).data.status == 'active';
     }
-
-    function role(institutionId) {
-      return userDoc(institutionId).data.role;
+    function role(institutionId, roleName) {
+      return member(institutionId) && get(userPath(institutionId)).data.role == roleName;
     }
-
-    function isAdmin(institutionId) {
-      return isInstitutionMember(institutionId) && role(institutionId) == 'admin';
+    function admin(institutionId) { return role(institutionId, 'admin'); }
+    function faculty(institutionId) { return role(institutionId, 'faculty'); }
+    function student(institutionId) { return role(institutionId, 'student'); }
+    function staff(institutionId) { return admin(institutionId) || faculty(institutionId); }
+    function sameIdentity(institutionId, uid) {
+      return signedIn() && request.auth.uid == uid;
     }
-
-    function isFaculty(institutionId) {
-      return isInstitutionMember(institutionId) && role(institutionId) == 'faculty';
-    }
-
-    function isStudent(institutionId) {
-      return isInstitutionMember(institutionId) && role(institutionId) == 'student';
-    }
-
-    // Institution directory: public read for picker UI (no auth required).
     match /institutions/{institutionId} {
-      allow read: if true;
-      // Spark-only: allow one-time admin bootstrapping by updating hasAdmin/adminUid.
-      allow create: if isSignedIn()
-        && request.resource.data.hasAdmin == true
-        && request.resource.data.adminUid == request.auth.uid;
-      allow update: if isSignedIn()
-        && resource.data.hasAdmin != true
-        && request.resource.data.hasAdmin == true
-        && request.resource.data.adminUid == request.auth.uid;
-      allow delete: if false;
+      allow get, list: if true;
+      // Institutions and initial administrators are provisioned by trusted Admin SDK only.
+      allow create, update, delete: if false;
 
-      // Users / claims mirror (per institution)
       match /users/{uid} {
-        allow read: if isAdmin(institutionId) || (isSignedIn() && request.auth.uid == uid);
-
-        // One-time bootstrap: first admin can create their own user doc as admin only if institution hasAdmin is not set.
-        allow create: if isSignedIn()
-          && request.auth.uid == uid
-          && request.resource.data.role == 'admin'
-          && request.resource.data.status == 'active'
-          && get(/databases/$(database)/documents/institutions/$(institutionId)).data.hasAdmin != true;
-
-        // Admin can create/update users. Users can update their own limited profile.
-        allow update: if (isAdmin(institutionId)) ||
-          (isSignedIn() && request.auth.uid == uid);
-        allow delete: if isAdmin(institutionId);
+        allow get: if admin(institutionId) || sameIdentity(institutionId, uid);
+        allow list: if admin(institutionId);
+        allow create, delete: if admin(institutionId);
+        allow update: if admin(institutionId) ||
+          (sameIdentity(institutionId, uid)
+           && resource.data.status == 'active'
+           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'designation'])
+           && request.resource.data.role == resource.data.role
+           && request.resource.data.status == resource.data.status);
       }
 
-      // Join requests (user requests access; admin approves by creating /users/{uid})
       match /join_requests/{uid} {
-        allow read: if (isAdmin(institutionId)) || (isSignedIn() && request.auth.uid == uid);
-        allow create, update: if isSignedIn() && request.auth.uid == uid;
-        allow delete: if isAdmin(institutionId) || (isSignedIn() && request.auth.uid == uid);
+        allow read: if admin(institutionId) || sameIdentity(institutionId, uid);
+        allow create: if sameIdentity(institutionId, uid)
+          && request.auth.token.email_verified == true
+          && request.resource.data.keys().hasOnly(['uid','email','name','requestedRole','status','createdAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.requestedRole in ['student','faculty']
+          && request.resource.data.status == 'pending';
+        allow update, delete: if admin(institutionId);
       }
 
-      // Admin sees everything, faculty reads operational data, students see only student_views.
-      match /faculty/{docId} {
-        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
-        allow write: if isAdmin(institutionId);
+      match /faculty/{record} {
+        allow read: if staff(institutionId);
+        allow write: if admin(institutionId);
       }
-
-      match /students/{docId} {
-        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
-        allow write: if isAdmin(institutionId);
+      match /students/{record} {
+        allow read: if staff(institutionId);
+        allow write: if admin(institutionId);
       }
-
-      match /rooms/{docId} {
-        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
-        allow write: if isAdmin(institutionId);
+      match /rooms/{record} {
+        allow read: if staff(institutionId);
+        allow write: if admin(institutionId);
       }
-
-      match /sessions/{docId} {
-        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
-        allow write: if isAdmin(institutionId);
+      match /sessions/{record} {
+        allow read: if staff(institutionId);
+        allow write: if admin(institutionId);
       }
-
-      match /exam_events/{docId} {
-        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
-        allow write: if isAdmin(institutionId);
-
-        // Any nested subcollections under exam_events are also admin/faculty readable by default.
-        match /{subPath=**} {
-          allow read: if isAdmin(institutionId) || isFaculty(institutionId);
-          allow write: if isAdmin(institutionId);
+      match /exam_events/{record} {
+        allow read: if staff(institutionId);
+        allow write: if admin(institutionId);
+        match /{nested=**} {
+          allow read: if staff(institutionId);
+          allow write: if admin(institutionId);
         }
       }
-
-      match /allocations/{docId} {
-        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
-        allow write: if isAdmin(institutionId);
+      match /allocations/{record} {
+        allow read: if staff(institutionId);
+        allow write: if admin(institutionId);
       }
-
-      match /leaves/{leaveId} {
-        allow read: if isAdmin(institutionId) || isFaculty(institutionId);
-        allow create: if isFaculty(institutionId) && request.resource.data.facultyUid == request.auth.uid;
-        allow update: if (isAdmin(institutionId)) ||
-          (isFaculty(institutionId) && resource.data.facultyUid == request.auth.uid && request.resource.data.facultyUid == request.auth.uid);
-        allow delete: if isAdmin(institutionId);
+      match /leaves/{record} {
+        allow read: if staff(institutionId);
+        allow create: if admin(institutionId) ||
+          (faculty(institutionId)
+           && request.resource.data.facultyUid == request.auth.uid
+           && request.resource.data.status == 'pending');
+        allow update: if admin(institutionId);
+        allow delete: if admin(institutionId);
       }
-
-      // Student-safe projections (no neighbor / invigilator leakage)
       match /student_views/{uid} {
-        allow read: if isStudent(institutionId) && request.auth.uid == uid;
-        allow write: if isAdmin(institutionId);
+        allow get: if admin(institutionId) ||
+          (student(institutionId) && request.auth.uid == uid);
+        allow list: if admin(institutionId);
+        allow write: if admin(institutionId);
       }
     }
   }
