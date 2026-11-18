@@ -54,7 +54,7 @@ export default function Sidebar({ mobileOpen = false, onClose = () => {} }) {
             </div>
           </div>
         )}
-        <div className="invigra-sidebar-foot">Invigra <span>Academic operations · 2026</span></div>
+        <div className="invigra-sidebar-foot">ExamDesk <span>Academic operations · 2026</span></div>
       </div>
     </aside>
   </>;

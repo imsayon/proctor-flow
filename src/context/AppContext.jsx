@@ -233,7 +233,7 @@ export function AppProvider({ children }) {
       dispatch(action);
       return true;
     } catch (error) {
-      console.error('[Invigra] Firestore write failed', error);
+      console.error('[ExamDesk] Firestore write failed', error);
       setWriteError(error.message || "Unable to save changes to Firestore.");
       return false;
     }

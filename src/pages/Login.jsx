@@ -37,7 +37,7 @@ export default function Login() {
     <section className="iv-login-content">
       <div className="iv-login-themes"><ThemeSwitcher compact/></div>
       <div className="iv-login-box">
-        <div className="iv-eyebrow mb-3">INVIGRA / SECURE ACCESS</div>
+        <div className="iv-eyebrow mb-3">EXAMDESK / SECURE ACCESS</div>
         <h2 className="text-[32px] font-extrabold tracking-[-1px] leading-tight">{authUser && pendingAccount ? "Access approval required" : mode === "signup" ? "Create your account" : "Welcome back"}</h2>
         <p className="iv-subhead mt-3 mb-8">{authUser && pendingAccount ? "Your identity is signed in, but an administrator must approve access to DSCE records." : "Use your verified account. Your role is assigned by the institution, not selected at sign-in."}</p>
         {!configured && <div role="alert" className="iv-panel mb-5" style={{borderColor:"var(--ui-red)",color:"var(--ui-red)"}}>Firebase is not configured for this deployment. An administrator must set the Firebase web application configuration before login is available.</div>}

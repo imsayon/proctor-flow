@@ -1,10 +1,10 @@
-# Invigra Android build
+# ExamDesk Android build
 
-Invigra wraps the repository's existing React/Vite application in a native Android WebView using Capacitor. The Android debug APK is a development build and is **not** a Play Store release.
+ExamDesk wraps the repository's existing React/Vite application in a native Android WebView using Capacitor. The Android debug APK is a development build and is **not** a Play Store release.
 
 ## GitHub Actions
 
-Open Actions → **Build Invigra Android APK** → a successful run → **Artifacts** → **Invigra-Android-Debug-APK**, then unzip and install `app-debug.apk`.
+Open Actions → **Build ExamDesk Android APK** → a successful run → **Artifacts** → **ExamDesk-Android-Debug-APK**, then unzip and install `app-debug.apk`.
 
 ## Local reproduction
 

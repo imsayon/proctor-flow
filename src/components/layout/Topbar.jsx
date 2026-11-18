@@ -23,7 +23,7 @@ export default function Topbar({ onToggleChat, onMenu }) {
       <div className="invigra-topbar-leading">
         <button type="button" className="invigra-menu-btn" onClick={onMenu} aria-label="Toggle navigation"><Menu size={20}/></button>
         <div className="invigra-mark" aria-hidden="true"><GraduationCap size={20} strokeWidth={2.2}/></div>
-        <div className="invigra-wordmark">invigra<span className="invigra-wordmark-period">.</span></div>
+        <div className="invigra-wordmark">examdesk<span className="invigra-wordmark-period">.</span></div>
         <span className="invigra-header-divider" />
         <div className="invigra-breadcrumb">Workspace <span>/</span> <strong>{pages[location.pathname] || "Workspace"}</strong></div>
       </div>
@@ -31,7 +31,7 @@ export default function Topbar({ onToggleChat, onMenu }) {
         <ThemeSwitcher compact />
         {isAdmin && onToggleChat && (
           <button type="button" onClick={onToggleChat} className="invigra-ai-button" title="Open AI assistant">
-            <Bot size={17}/><span>Ask Invigra</span><span className="invigra-online-dot" />
+            <Bot size={17}/><span>Ask ExamDesk</span><span className="invigra-online-dot" />
           </button>
         )}
         <button type="button" onClick={() => canProfile && navigate("/profile")} className="invigra-user" title={user?.name || "Account"}>

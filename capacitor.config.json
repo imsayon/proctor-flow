@@ -1,6 +1,6 @@
 {
   "appId": "com.invigra.academic",
-  "appName": "Invigra",
+  "appName": "ExamDesk",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
